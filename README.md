@@ -27,7 +27,7 @@
 
 الإعداد مرة واحدة:
 1. لوحة Cloudflare ← **Storage & Databases ← KV ← Create** باسم مثل `qflavours-users`، وانسخ الـ **ID** الخاص به.
-2. ضع الـ ID في `wrangler.jsonc` مكان `REPLACE_WITH_KV_NAMESPACE_ID` (الـ ID ليس سراً).
+2. ضع الـ ID في `wrangler.jsonc` في `kv_namespaces` (الـ ID ليس سراً). المخزن الحالي مضبوط مسبقاً.
 3. Worker `qflavours` ← **Settings ← Variables and Secrets** وأضف (نوع *Secret*):
    - `ADMIN_EMAIL` بريد المالك.
    - `SESSION_SECRET` نص عشوائي طويل (32 حرفاً أو أكثر) — تغييره يُخرج جميع المستخدمين.
