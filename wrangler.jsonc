@@ -12,5 +12,12 @@
   },
   "kv_namespaces": [
     { "binding": "USERS", "id": "6ee841968fff4741bdb8745cc848ebb2" }
-  ]
+  ],
+  // Branch builds run `wrangler preview`, which needs its own bindings.
+  // Previews share the production users store on purpose, so testers sign in with their real accounts.
+  "previews": {
+    "kv_namespaces": [
+      { "binding": "USERS", "id": "6ee841968fff4741bdb8745cc848ebb2" }
+    ]
+  }
 }
