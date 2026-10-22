@@ -28,12 +28,6 @@
           <option value="admin">مدير — يستخدم الأداة ويدير المستخدمين</option>
         </select>
       </div>
-      <div><label for="password" id="pwLabel">كلمة المرور (8 أحرف على الأقل)</label>
-        <div style="display:flex;gap:6px">
-          <input id="password" type="text" class="ltr" autocomplete="new-password" minlength="8">
-          <button type="button" id="gen" class="sec sm" title="توليد كلمة مرور">🎲</button>
-        </div>
-      </div>
     </div>
     <div class="row">
       <button type="submit" id="save">إضافة</button>
@@ -41,7 +35,7 @@
     </div>
   </form>
   <div id="msg" class="status hidden"></div>
-  <p class="hint">أرسل البريد وكلمة المرور للمستخدم بطريقة آمنة، ويمكنه تغيير كلمة المرور بعد الدخول من زر 🔑 في الشريط العلوي.</p>
+  <p class="hint">الدخول حالياً بالبريد فقط بدون كلمة مرور: أي شخص يكتب بريداً مسجَّلاً هنا يدخل الأداة، فأضف فقط من تثق به.</p>
 </section>
 
 <section class="card hidden" id="listCard">

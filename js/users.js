@@ -37,9 +37,7 @@ function resetForm() {
   state.editing = null;
   $("form").reset();
   $("email").readOnly = false;
-  $("password").required = true;
   $("formTitle").textContent = "➕ إضافة مستخدم";
-  $("pwLabel").textContent = "كلمة المرور (8 أحرف على الأقل)";
   $("save").textContent = "إضافة";
   $("cancel").classList.add("hidden");
 }
@@ -51,26 +49,20 @@ function editUser(email) {
   $("email").value = u.email; $("email").readOnly = true;
   $("name").value = u.name;
   $("role").value = u.role;
-  $("password").value = ""; $("password").required = false;
   $("formTitle").textContent = "✏️ تعديل " + u.name;
-  $("pwLabel").textContent = "كلمة مرور جديدة (اتركها فارغة للإبقاء على الحالية)";
   $("save").textContent = "حفظ التعديل";
   $("cancel").classList.remove("hidden");
   $("msg").classList.add("hidden");
   $("formCard").scrollIntoView({ behavior: "smooth" });
 }
 
-$("gen").onclick = () => {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789";
-  $("password").value = Array.from(crypto.getRandomValues(new Uint32Array(12)), (n) => chars[n % chars.length]).join("");
-};
 $("cancel").onclick = () => { resetForm(); $("msg").classList.add("hidden"); };
 
 $("form").onsubmit = async (e) => {
   e.preventDefault();
   $("save").disabled = true;
   try {
-    const body = { email: $("email").value, name: $("name").value, role: $("role").value, password: $("password").value };
+    const body = { email: $("email").value, name: $("name").value, role: $("role").value };
     const user = await api("/api/users", { method: "POST", body });
     setMsg(state.editing ? `✅ تم حفظ تعديلات ${user.name}` : `✅ تمت إضافة ${user.name} — يمكنه الدخول الآن بالبريد ${user.email}`, "ok");
     resetForm();
