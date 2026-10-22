@@ -2,7 +2,7 @@
 
 موقع ثابت (HTML + ES modules، بدون build) يرفع إلى Q-Flavours عبر الـ API:
 المنتجات، الخيارات والإضافات، الوصفات، وأسعار التطبيقات حسب نوع الطلب.
-يُنشر تلقائياً على Cloudflare Pages عند الدمج في `main` (ونسخة على GitHub Pages).
+يُنشر تلقائياً على **Cloudflare Workers** (Worker باسم `qflavours`، عبر Workers Builds — وليس Pages) عند الدمج في `main` (ونسخة على GitHub Pages).
 
 ## قواعد العمل
 - الرد على المستخدم بالعربية.
@@ -16,6 +16,18 @@
 - `js/builder.js` قراءة الأوراق والتحقق وبناء الـ payload.
 - `js/api.js` عميل Q-Flavours — `js/uploader.js` تسلسل الرفع — `js/excel.js` قراءة/كتابة Excel.
 - `templates/` قوالب Excel (الأوراق: Products, Modifiers, Recipes, Delivery_Prices, Price_Rules, Ingredients_Map).
+- `css/app.css` تنسيق مشترك — `js/nav.js` الشريط العلوي ودالة `api()` — `login.html`/`js/login.js` — `users.html`/`js/users.js`.
+- `worker/` الكود الوحيد الذي يعمل على الخادم: `index.js` (المدخل والتوجيه)، `middleware.js`، `api/*.js`، `auth.js`.
+- `wrangler.jsonc`: `run_worker_first` حتى تمر كل الطلبات بالـ Worker، وربط KV `USERS`. `.assetsignore` يمنع نشر `worker/` وملفات الإعداد كملفات عامة.
+
+## تسجيل الدخول والمستخدمين
+- `worker/middleware.js` يحمي كل الطلبات؛ المسموح بدون دخول: `/login`, `/js/login.js`, `/css/app.css`, `/api/login` (لذلك `login.js` لا يستورد أي ملف آخر).
+- **قرار المستخدم: الدخول مبدئياً بالبريد فقط بدون كلمة مرور.** نسخة كلمات المرور (PBKDF2، تغيير كلمة المرور، `ADMIN_PASSWORD`) في commit `b2af000` لإرجاعها لاحقاً.
+- مطلوب في Cloudflare: KV مربوط باسم `USERS` (الـ id في `wrangler.jsonc`)، وأسرار `ADMIN_EMAIL`, `SESSION_SECRET` في إعدادات الـ Worker.
+- المالك (من الأسرار) لا يُخزَّن في KV ولا يُحذف. باقي المستخدمين `user:<email>` في KV.
+- الأدوار: `user` يستخدم الأداة، `admin` يدير المستخدمين أيضاً. الجلسة كوكي موقّع 12 ساعة، وحذف المستخدم ينهي جلساته.
+- الـ handlers بشكل Pages Functions (`onRequestGet/Post/Delete({ request, env, data, next })`) ويوجّهها `worker/index.js`؛ مسار `/api` جديد يُضاف إلى `ROUTES` هناك. تحقق الصلاحية داخل كل handler.
+- نسخة GitHub Pages بلا Worker، فهي غير محمية.
 
 ## Q-Flavours API (مستخرج من تطبيق qflavours.qoyod.com — غير موثق علناً)
 - القاعدة: `https://qflavours-api.qoyod.com/pos/api/v2`

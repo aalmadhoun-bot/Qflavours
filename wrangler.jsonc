@@ -1,0 +1,23 @@
+// Cloudflare Workers config (deployed by Workers Builds on push).
+// The Worker runs first on every request so the whole site stays behind the login.
+// Secrets (ADMIN_EMAIL, SESSION_SECRET) are set in the dashboard, not here: this repo is public.
+{
+  "name": "qflavours",
+  "main": "worker/index.js",
+  "compatibility_date": "2025-09-01",
+  "assets": {
+    "directory": ".",
+    "binding": "ASSETS",
+    "run_worker_first": true
+  },
+  "kv_namespaces": [
+    { "binding": "USERS", "id": "6ee841968fff4741bdb8745cc848ebb2" }
+  ],
+  // Branch builds run `wrangler preview`, which needs its own bindings.
+  // Previews share the production users store on purpose, so testers sign in with their real accounts.
+  "previews": {
+    "kv_namespaces": [
+      { "binding": "USERS", "id": "6ee841968fff4741bdb8745cc848ebb2" }
+    ]
+  }
+}
