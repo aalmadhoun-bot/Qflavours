@@ -33,7 +33,16 @@
    - `SESSION_SECRET` نص عشوائي طويل (32 حرفاً أو أكثر) — تغييره يُخرج جميع المستخدمين.
 4. ادفع التعديل؛ بعد نجاح النشر ادخل بحساب المالك وأضف المستخدمين.
 
-> الأسرار تبقى كما هي مع كل نشر لأنها ليست في `wrangler.jsonc`. ونسخ المعاينة للفروع تستخدم نفس الأسرار ونفس مخزن KV.
+> الأسرار تبقى كما هي مع كل نشر لأنها ليست في `wrangler.jsonc`.
+
+**معاينة الفروع:** كل فرع غير `main` يُنشر بأمر `wrangler preview` على رابط مثل `https://<اسم-الفرع>-qflavours.a-almadhoun.workers.dev`، ويستخدم نفس مخزن KV (قسم `previews` في `wrangler.jsonc`). المعاينة **لا ترث أسرار الإنتاج**، ولا تُضاف من اللوحة، بل بالأوامر (تحتاج Node.js و`npx wrangler login`):
+```bash
+npx wrangler preview base-config secret put ADMIN_EMAIL
+```
+```bash
+npx wrangler preview base-config secret put SESSION_SECRET
+```
+هذه القيم الأساسية تُطبَّق على المعاينات **الجديدة** فقط (وهي مضبوطة حالياً). لمعاينة موجودة استخدم `npx wrangler preview secret put NAME --name <اسم-المعاينة>`.
 
 > حساب المالك لا يُحذف ولا يُعدَّل من الموقع؛ يُغيَّر من `ADMIN_EMAIL`.
 > نسخة **GitHub Pages لا تدعم تسجيل الدخول** وتبقى مفتوحة لأي شخص — أوقفها من *Settings ← Pages* إذا أردت أن يكون الدخول عبر الحسابات فقط.
