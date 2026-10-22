@@ -2,7 +2,7 @@
 // back them up to Excel, then delete the selected ones or all of them (one by one, stoppable, with a report).
 import { Client } from "./api.js";
 import { saveXlsx, stamp, writeWorkbook } from "./excel.js";
-import { mountNav } from "./nav.js";
+import { askConfirm, mountNav } from "./nav.js";
 import { connect } from "./uploader.js";
 
 const $ = (id) => document.getElementById(id);
@@ -123,11 +123,12 @@ document.querySelectorAll("input[name=mode]").forEach((r) => { r.onchange = () =
 $("confirmText").oninput = refresh;
 $("btnStop").onclick = () => { state.stop = true; $("btnStop").disabled = true; log("⏹️ سيتوقف الحذف بعد المنتج الحالي…"); };
 
-$("btnDelete").onclick = () => {
+$("btnDelete").onclick = async () => {
   const list = targets();
   if (!list.length || $("confirmText").value.trim() !== CONFIRM[mode()]) return;
   const what = mode() === "all" ? `كل المنتجات (${list.length})` : `${list.length} منتج محدد`;
-  if (!confirm(`سيتم حذف ${what} نهائياً من فليفرز.\nلا يمكن التراجع عن هذه العملية.\n\nمتابعة؟`)) return;
+  const go = await askConfirm(`سيتم حذف ${what} نهائياً من فليفرز.\nلا يمكن التراجع عن هذه العملية.\n\nمتابعة؟`, { ok: `🗑️ نعم، احذف ${list.length}`, danger: true });
+  if (!go) return log("• أُلغي الحذف");
   busy(async () => {
     state.stop = false; $("btnStop").disabled = false;
     $("prog").classList.remove("hidden"); $("prog").value = 0;

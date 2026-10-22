@@ -1,9 +1,9 @@
 import { DEFAULT_BASE_URL } from "./api.js";
 import { readWorkbook, saveXlsx as download, stamp, writeWorkbook } from "./excel.js";
 import { MODES, connect, loadContext, referenceSheets, upload } from "./uploader.js";
-import { mountNav } from "./nav.js";
+import { askConfirm, mountNav } from "./nav.js";
 
-export const VERSION = "2.3.0";
+export const VERSION = "2.3.1";
 const $ = (id) => document.getElementById(id);
 const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null };
 const store = {
@@ -93,8 +93,8 @@ async function loadFile(f) {
   refresh();
 }
 
-function run(live) {
-  if (live && !confirm("سيتم رفع البيانات فعلياً على فليفرز. متابعة؟")) return;
+async function run(live) {
+  if (live && !(await askConfirm("سيتم رفع البيانات فعلياً على فليفرز. متابعة؟", { ok: "🚀 رفع فعلي" }))) return;
   busy(async () => {
     clearLog();
     $("prog").classList.remove("hidden"); $("prog").value = 0; $("result").classList.add("hidden");

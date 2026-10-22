@@ -1,5 +1,5 @@
 // Users page (admins): list, add, edit, delete — backed by worker/api/users.js.
-import { api, mountNav } from "./nav.js";
+import { api, askConfirm, mountNav } from "./nav.js";
 
 const $ = (id) => document.getElementById(id);
 const ROLES = { user: "مستخدم", admin: "مدير" };
@@ -76,7 +76,7 @@ $("rows").onclick = async (e) => {
   if (edit) editUser(edit.dataset.edit);
   if (del) {
     const email = del.dataset.del;
-    if (!confirm(`حذف المستخدم ${email}؟ لن يستطيع الدخول بعد ذلك.`)) return;
+    if (!(await askConfirm(`حذف المستخدم ${email}؟ لن يستطيع الدخول بعد ذلك.`, { ok: "حذف", danger: true }))) return;
     try {
       await api("/api/users?email=" + encodeURIComponent(email), { method: "DELETE" });
       if (state.editing === email) resetForm();
