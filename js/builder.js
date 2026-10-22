@@ -322,6 +322,11 @@ export function buildPayloads(sheets, ctx) {
           finals[key] = roundTo(price * (1 + rule.pct / 100) + rule.add, rule.step);
         }
         Object.assign(finals, explicit);
+        // Flavours stores an app price as an amount ADDED to the base price and rejects a negative one (HTTP 422).
+        const what = m._default ? "المنتج" : `الخيار '${m.modifier_name_en}'`;
+        for (const [key, v] of Object.entries(finals)) {
+          if (v < price) err(sheet, m._row, code, `سعر ${what} في ${key} (${v}) أقل من سعره الأساسي (${price}) — فليفرز لا يقبل سعر تطبيق أقل من السعر الأساسي. اكتب سعراً مساوياً أو أعلى، أو اترك الخانة فارغة`);
+        }
       }
 
       let barcode = null;
