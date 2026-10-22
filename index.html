@@ -32,8 +32,9 @@
 
 <section class="card" id="templates">
   <h2><span class="step">2</span> القالب والبيانات المرجعية</h2>
-  <p class="hint">حمّل القالب وعبّئه. التصنيفات غير الموجودة تُنشأ تلقائياً، أما المواد الخام فيجب أن تكون موجودة في فليفرز. صدّر البيانات المرجعية لمعرفة أسماء التصنيفات والمواد الخام وأنواع الطلب (التطبيقات).</p>
+  <p class="hint">حمّل القالب وعبّئه. التصنيفات والتطبيقات (أنواع الطلب) غير الموجودة تُنشأ تلقائياً، أما المواد الخام فيجب أن تكون موجودة في فليفرز. بعد الاتصال حمّل <b>القالب الجاهز لحسابك</b>: أعمدة أسعار التطبيقات فيه هي أنواع الطلب المسجلة فعلياً في حسابك.</p>
   <div class="row">
+    <button id="btnTpl" disabled>⬇️ قالب جاهز لحسابي (بأنواع الطلب المسجلة)</button>
     <a class="btn sec" href="templates/flavours_template.xlsx" download>⬇️ قالب Excel مع أمثلة</a>
     <a class="btn sec" href="templates/flavours_template_empty.xlsx" download>⬇️ قالب فارغ</a>
     <button id="btnRef" class="sec" disabled>📤 تصدير البيانات المرجعية من حسابي</button>
@@ -43,7 +44,7 @@
     <tr><td>Products</td><td>المنتجات — منتج بسعر واحد؟ اكتب price فقط (يجب أن يكون أكبر من 0)</td></tr>
     <tr><td>Modifiers</td><td>الخيارات OPTION (أحجام) والإضافات ADDITIONAL بالسعر والتكلفة</td></tr>
     <tr><td>Recipes</td><td>الوصفة: المادة الخام والكمية لكل خيار</td></tr>
-    <tr><td>Delivery_Prices</td><td>السعر النهائي لكل خيار في كل تطبيق/نوع طلب (HUNGERSTATION, JAHEZ, …)</td></tr>
+    <tr><td>Delivery_Prices</td><td>السعر النهائي لكل خيار في كل تطبيق/نوع طلب (HUNGERSTATION, JAHEZ, …) — التطبيق غير المسجّل في حسابك يُفعَّل أو يُنشأ عند الرفع الفعلي</td></tr>
     <tr><td>Price_Rules</td><td>نسبة زيادة تلقائية لكل تطبيق مع التقريب</td></tr>
     <tr><td>Ingredients_Map</td><td>ربط اسم مادة خام برقمها (اختياري)</td></tr>
   </table>
@@ -58,6 +59,7 @@
     <div class="radio" id="modes"></div>
     <div class="radio">
       <label><input type="checkbox" id="createCats" checked> إنشاء التصنيفات غير الموجودة تلقائياً</label>
+      <label><input type="checkbox" id="createTypes" checked> إنشاء التطبيقات (أنواع الطلب) غير المسجلة تلقائياً</label>
       <label><input type="checkbox" id="partial"> ارفع المنتجات السليمة حتى لو وُجدت أخطاء في منتجات أخرى</label>
       <label><input type="checkbox" id="confirm"> أؤكد الرفع الفعلي على فليفرز</label>
     </div>

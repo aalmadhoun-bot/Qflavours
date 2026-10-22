@@ -57,9 +57,10 @@ const intLike = (v) => (isIntLike(v) ? parseInt(parseFloat(v), 10) : v);
 
 export class Context {
   constructor({ marketId = null, defaultBranchId = null, categories = [], ingredients = [],
-    orderTypes = [], createCategories = true } = {}) {
-    Object.assign(this, { marketId, defaultBranchId, categories, ingredients, orderTypes, createCategories });
+    orderTypes = [], orderTypeCatalog = null, createCategories = true, createOrderTypes = true } = {}) {
+    Object.assign(this, { marketId, defaultBranchId, categories, ingredients, orderTypes, orderTypeCatalog, createCategories, createOrderTypes });
     this.pendingCategories = {};
+    this.pendingOrderTypes = [];  // apps named in the file that this run will register (see uploader.planOrderTypes)
     this.reindex();
   }
   reindex() {
@@ -74,14 +75,20 @@ export class Context {
       if (!this._ing.has(norm(i.id))) this._ing.set(norm(i.id), i.id);
     }
     this._price = new Map();
-    for (const o of this.orderTypes) {
+    for (const o of [...this.orderTypes, ...this.pendingOrderTypes]) {
       if (!o.key) continue;
       for (const v of [o.key, o.name_en, o.name_ar, o.name]) if (v && !this._price.has(keynorm(v))) this._price.set(keynorm(v), o.key);
     }
   }
   resolvePriceKey(col) {
-    if (this._price.size === 0) return String(col).trim().toUpperCase(); // nothing loaded -> trust header
+    if (this._price.size === 0 && !this.orderTypeCatalog) return String(col).trim().toUpperCase(); // nothing loaded -> trust header
     return this._price.get(keynorm(col)) ?? null;
+  }
+  orderType(key) { return this.orderTypes.find((o) => o.key === key) || null; }
+  // A type Flavours knows (registered here or not), matched by key or name like the price columns are.
+  catalogType(name) {
+    const k = keynorm(name);
+    return (this.orderTypeCatalog || []).find((o) => [o.key, o.name_en, o.name_ar].some((v) => v && keynorm(v) === k)) || null;
   }
   addIngredientMap(rows) {
     for (const r of rows) if (!isNil(r.ingredient_name) && !isNil(r.ingredient_id)) this._ing.set(norm(r.ingredient_name), intLike(r.ingredient_id));
@@ -93,6 +100,19 @@ export class Context {
     if (!isNil(hit)) return intLike(hit);
     return isIntLike(v) ? parseInt(parseFloat(v), 10) : null;
   }
+}
+
+// Names the file uses as apps/order types: Delivery_Prices columns that hold a price, and Price_Rules keys
+// that carry a rule (a key with every rule cell empty changes nothing, so it does not count).
+export function priceColumnNames(sheets) {
+  const names = new Set();
+  for (const r of sheets.Delivery_Prices || []) {
+    for (const [col, val] of Object.entries(r)) if (!NON_PRICE_COLS.has(col) && !isNil(val)) names.add(String(col).trim());
+  }
+  for (const r of sheets.Price_Rules || []) {
+    if (!isNil(r.payment_method_key) && [r.markup_percent, r.fixed_add, r.round_to].some((v) => !isNil(v))) names.add(String(r.payment_method_key).trim());
+  }
+  return [...names];
 }
 
 export function buildPayloads(sheets, ctx) {

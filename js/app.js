@@ -2,8 +2,9 @@ import { DEFAULT_BASE_URL } from "./api.js";
 import { readWorkbook, saveXlsx as download, stamp, writeWorkbook } from "./excel.js";
 import { MODES, connect, loadContext, referenceSheets, upload } from "./uploader.js";
 import { askConfirm, mountNav } from "./nav.js";
+import { accountTemplate } from "./template.js";
 
-export const VERSION = "2.4.0";
+export const VERSION = "2.5.0";
 const $ = (id) => document.getElementById(id);
 const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null };
 const store = {
@@ -21,6 +22,7 @@ function setStatus(el, text, cls = "") { el.textContent = text; el.className = "
 function refresh() {
   const c = !!state.ctx;
   $("btnRef").disabled = !c || state.busy;
+  $("btnTpl").disabled = !c || state.busy;
   $("btnDry").disabled = !c || !state.sheets || state.busy;
   $("btnLive").disabled = !c || !state.sheets || state.busy || !$("confirm").checked;
   $("btnConnect").disabled = state.busy;
@@ -57,7 +59,7 @@ $("btnConnect").onclick = () => busy(async () => {
     $("connStatus").className = "status ok";
     $("connStatus").innerHTML = `✅ متصل — ${client.baseUrl}<br>Market: <span class="pill">${ctx.marketId || "-"}</span>
       التصنيفات: <b>${ctx.categories.length}</b> | المواد الخام: <b>${ctx.ingredients.length}</b><br>
-      أنواع الطلب / التطبيقات: ${ctx.orderTypes.map((o) => `<span class="pill">${o.key}</span>`).join("") || "لم تُجلب"}`;
+      أنواع الطلب / التطبيقات: ${ctx.orderTypes.map((o) => `<span class="pill">${o.key}${o.active === false ? " (معطّل)" : ""}</span>`).join("") || "لا يوجد"}`;
     log("✅ تم الاتصال وتحميل البيانات المرجعية");
   } catch (e) {
     state.ctx = null;
@@ -71,6 +73,14 @@ $("btnRef").onclick = () => busy(async () => {
     log("📤 جارٍ تصدير البيانات المرجعية…");
     download(await writeWorkbook(await referenceSheets(state.client, state.ctx)), `flavours_reference_${stamp()}.xlsx`);
     log("✅ تم تصدير البيانات المرجعية");
+  } catch (e) { log("❌ " + e.message); alert(e.message); }
+});
+
+$("btnTpl").onclick = () => busy(async () => {
+  try {
+    log("📄 جارٍ تجهيز قالب خاص بحسابك…");
+    download(await accountTemplate(state.ctx), `flavours_template_market-${state.ctx.marketId ?? "x"}_${stamp()}.xlsx`);
+    log(`✅ تم تحميل القالب — أعمدة التطبيقات: ${state.ctx.orderTypes.filter((t) => t.active !== false).map((t) => t.key).join("، ") || "لا يوجد"}`);
   } catch (e) { log("❌ " + e.message); alert(e.message); }
 });
 
@@ -99,6 +109,7 @@ async function run(live) {
     clearLog();
     $("prog").classList.remove("hidden"); $("prog").value = 0; $("result").classList.add("hidden");
     state.ctx.createCategories = $("createCats").checked;
+    state.ctx.createOrderTypes = $("createTypes").checked;
     try {
       const out = await upload(state.client, state.ctx, structuredClone(state.sheets), {
         mode: document.querySelector("input[name=mode]:checked").value,

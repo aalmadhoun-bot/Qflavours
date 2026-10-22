@@ -7,6 +7,11 @@ export const DEFAULT_BASE_URL = "https://qflavours-api.qoyod.com/pos/api/v2";
 const PROXY_PATH = "/api/flavours";
 const PRODUCT_API_VERSION = "2.5.0";   // what the Q-Flavours web app sends for products
 const CATEGORY_API_VERSION = "2.8.0";  // ... and for product categories
+// Defaults of the web app's "new order type" form (Settings → Order types).
+const ORDER_TYPE_DEFAULTS = {
+  mode: "ENTIRELY", target: "PRODUCT", method: "EXCLUSIVE", value_type: "PERCENT", value: 0,
+  icon_id: null, image_url: null, is_split: false, is_digital: true, is_active: true, settings: [], products: [], methods: [],
+};
 
 export class ApiError extends Error {
   constructor(message, status = null, payload = null) { super(message); this.status = status; this.payload = payload; }
@@ -186,7 +191,36 @@ export class Client {
     throw last || new ApiError("فشل إنشاء التصنيف");
   }
 
+  // Every order type Flavours knows (delivery apps, dine-in, …). `adopted` = registered in this account
+  // (Settings → Order types), which is what the web app lists with filter[is_adopted]=1.
+  // Returns null when the API gives no adoption info, so callers fall back to legacyOrderTypes().
+  async orderTypeCatalog() {
+    const items = (await this.list("orders/types", { "includes[]": ["config"] })).filter((it) => it && it.key);
+    if (!items.some((it) => "is_adopted" in it || "config" in it)) return null;
+    return items.map((it) => ({
+      key: it.key, name_en: it.name_en ?? null, name_ar: it.name_ar ?? null,
+      adopted: !!(it.is_adopted ?? it.config), active: !!it.config?.is_active, config_id: it.config?.id ?? null,
+    }));
+  }
+
+  // Registers an order type in the account: { type_key } adopts a known one, { name_en, name_ar } creates a custom one.
+  // Same defaults as the web app's "new order type" form. Resolves with the type key when the API returns it.
+  async createOrderType({ type_key = null, name_en = "", name_ar = null }) {
+    const body = { ...ORDER_TYPE_DEFAULTS, type_key, name_en, name_ar };
+    const p = await this.request("POST", "orders/types/configs", { body, retries: 1 });
+    const d = p?.data ?? p;
+    return d?.type_key || d?.type?.key || d?.key || type_key || null;
+  }
+
   async orderTypes() {
+    try {
+      const all = await this.orderTypeCatalog();
+      if (all) return all.filter((t) => t.adopted);
+    } catch { /* older API: fall back */ }
+    return this.legacyOrderTypes();
+  }
+
+  async legacyOrderTypes() {
     for (const path of ["orders/types", "orders/types/configs"]) {
       let p;
       try { p = await this.request("GET", path, { retries: 1 }); } catch { continue; }

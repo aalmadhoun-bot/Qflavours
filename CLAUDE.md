@@ -37,7 +37,8 @@
 - بـ Bearer: مفتاح خاطئ أو مفتاح غير مدعوم يعطي 403 مثل الطلب بلا مفتاح؛ بـ `API-TOKEN` المفتاح الخاطئ يعطي 401. لذلك `js/api.js` يجرّب Bearer ثم عند 401/403 يتحول إلى `/api/flavours/*` (worker/api/flavours.js) الذي يرسل `API-TOKEN` من الخادم. التمرير مثبّت على `qflavours-api.qoyod.com/pos/api/v2` فقط (ليس proxy مفتوحاً).
 - `GET /me` → market من `userable.market.id`.
 - التصنيفات: `GET /product-categories?filter[scope]=MANAGE&filter[market_id]=…` و `POST /product-categories {name_en, name_ar, icon}` مع `X-API-Version: 2.8.0`. الاسم المكرر → 422 "already exists" (ابحث عنه واربط به).
-- أنواع الطلب: `GET /orders/types` (كل عنصر فيه `key`).
+- أنواع الطلب: `GET /orders/types?includes[]=config` = كل الأنواع التي يعرفها فليفرز، و`is_adopted` + `config.is_active` = المسجّل/المفعّل في الحساب (الإعدادات ← أنواع الطلب). `client.orderTypes()` يرجع المسجّلة فقط؛ `orderTypeCatalog()` الكل.
+- إنشاء/تفعيل نوع طلب: `POST /orders/types/configs` مع `{type_key}` لتفعيل نوع معروف أو `{name_en, name_ar}` لنوع جديد، وبقية الحقول بقيم نموذج موقع فليفرز (`ORDER_TYPE_DEFAULTS` في `js/api.js`).
 - المواد الخام: `GET /ingredients`.
 - المنتج: `POST /products` و `POST /products/{id}` مع `X-API-Version: 2.5.0`:
   - `name_en, name_ar, description_en/ar, category_id, duration, market_id, branch_id, options[]` (نفس القائمة تُرسل أيضاً في `modifiers`).
@@ -47,6 +48,8 @@
 
 ## سلوك الأداة
 - التصنيف غير الموجود يُنشأ تلقائياً (قابل للإيقاف من الواجهة).
+- التطبيق/نوع الطلب غير المسجّل في Delivery_Prices أو Price_Rules (صف فيه قاعدة) يُفعَّل إن كان معروفاً في فليفرز أو يُنشأ كنوع جديد، في الرفع الفعلي فقط وبعد التصنيفات (`planOrderTypes`/`createOrderTypes` في `js/uploader.js`؛ قابل للإيقاف). النوع الجديد يأخذ مفتاحاً مؤقتاً `NEW:…` حتى يُنشأ، وإن فشل تُحذف أسعاره فقط.
+- "قالب جاهز لحسابي" (`js/template.js`): يُبنى من `flavours_template_empty.xlsx` بأعمدة أنواع الطلب المسجلة والمفعّلة + ورقة Order_Types. يُكتب بـ ExcelJS من الصفر لأن ExcelJS لا يقرأ القالب الأصلي (تعليقات الخلايا)؛ القراءة بـ SheetJS.
 - المنتج الموجود بنفس `name_en` يُحدَّث (وضع upsert افتراضياً).
 - أي خطأ في الملف يوقف الرفع الفعلي كله، إلا إذا فعّل المستخدم "ارفع المنتجات السليمة".
 - أعمدة Delivery_Prices/Price_Rules تُطابق مفتاح أو اسم نوع الطلب بعد التطبيع (HUNGERSTATION = HUNGER_STATION = HungerStation).

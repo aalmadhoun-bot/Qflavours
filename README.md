@@ -67,7 +67,8 @@ npx wrangler preview base-config secret put SESSION_SECRET
 | `worker/auth.js` | الجلسات الموقّعة وتخزين المستخدمين في KV |
 | `js/builder.js` | قراءة القالب، التحقق من البيانات، وبناء طلبات المنتجات |
 | `js/api.js` | الاتصال بـ Q-Flavours API |
-| `js/uploader.js` | خطوات الرفع: التصنيفات ← المنتجات ← التقرير |
+| `js/uploader.js` | خطوات الرفع: التصنيفات ← التطبيقات (أنواع الطلب) ← المنتجات ← التقرير |
+| `js/template.js` | "قالب جاهز لحسابي": قالب الرفع بأعمدة أنواع الطلب المسجلة فعلياً في الحساب + ورقة Order_Types |
 | `js/excel.js` | قراءة ملف Excel وكتابة التقارير |
 | `templates/` | قوالب Excel |
 | `vendor/` | مكتبات SheetJS و ExcelJS (محلية، بدون CDN) |
@@ -77,6 +78,7 @@ npx wrangler preview base-config secret put SESSION_SECRET
 - المصادقة: أولاً `Authorization: Bearer` من المتصفح مباشرة. هيدر `API-TOKEN` يمنعه خادم فليفرز من المتصفحات (CORS)، فإذا رُفض Bearer بـ 401/403 تنتقل الأداة تلقائياً إلى `/api/flavours/*` في الـ Worker، الذي يعيد إرسال الطلب نفسه بهيدر `API-TOKEN` (المفتاح لا يُخزَّن ولا يُسجَّل).
   هذا التحويل يعمل على نسخة Cloudflare فقط؛ نسخة GitHub Pages تبقى بـ Bearer وحده.
 - المنتجات: `POST /products` و `POST /products/{id}` مع `X-API-Version: 2.5.0`، والخيارات في `options`.
+- أنواع الطلب: `GET /orders/types` (المسجّلة = `is_adopted`)، والتطبيق غير المسجّل يُفعَّل/يُنشأ بـ `POST /orders/types/configs` عند الرفع الفعلي.
 - أسعار التطبيقات: لكل خيار `prices[] = {priceable_type: "ORDER_TYPE", priceable_id: <مفتاح نوع الطلب>, value_type: "NOMINAL", value: السعر النهائي − السعر الأساسي}`.
 - التصنيفات: `GET/POST /product-categories` مع `X-API-Version: 2.8.0` و `filter[scope]=MANAGE`.
 - لا يُرفع أي منتج أو خيار بدون سعر أو بسعر 0.
