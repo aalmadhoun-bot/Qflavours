@@ -1,7 +1,10 @@
 // Q-Flavours API client (browser). Port of flavours/client.py.
-// Only `Authorization: Bearer` is used: the API's CORS policy blocks the API-TOKEN header from other sites.
+// Tries `Authorization: Bearer` directly first. The API's CORS policy blocks the API-TOKEN header from
+// browsers, so if Bearer is refused the client switches to the site's Worker (worker/api/flavours.js),
+// which forwards the same request with the key as API-TOKEN.
 
 export const DEFAULT_BASE_URL = "https://qflavours-api.qoyod.com/pos/api/v2";
+const PROXY_PATH = "/api/flavours";
 const PRODUCT_API_VERSION = "2.5.0";   // what the Q-Flavours web app sends for products
 const CATEGORY_API_VERSION = "2.8.0";  // ... and for product categories
 
@@ -43,18 +46,42 @@ export class Client {
     this.baseUrl = (baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
     this.log = log;
     this.delay = delay;
+    this.viaProxy = false;
   }
 
-  async request(method, path, { params, body, version, retries = 3 } = {}) {
-    const url = (path.startsWith("http") ? path : `${this.baseUrl}/${path.replace(/^\/+/, "")}`) + toQuery(params);
-    const headers = { Accept: "application/json", Authorization: `Bearer ${this.token}` };
+  canProxy() {
+    return this.baseUrl === DEFAULT_BASE_URL && typeof location !== "undefined" && /^https?:$/.test(location.protocol);
+  }
+
+  async request(method, path, opts = {}) {
+    try { return await this.send(method, path, opts); }
+    catch (e) {
+      if (this.viaProxy || ![401, 403].includes(e.status) || !this.canProxy()) throw e;
+      this.viaProxy = true;
+      this.log("↪️ رُفض المفتاح بطريقة Bearer — إعادة المحاولة عبر خادم الموقع (API-TOKEN)");
+      try { return await this.send(method, path, opts); }
+      catch (e2) {
+        if (!e2.proxyMissing) throw e2;
+        this.viaProxy = false;  // e.g. the GitHub Pages copy: no Worker behind /api
+        throw e;
+      }
+    }
+  }
+
+  async send(method, path, { params, body, version, retries = 3 } = {}) {
+    const rel = path.replace(/^\/+/, "");
+    const url = (this.viaProxy ? `${PROXY_PATH}/${rel}` : path.startsWith("http") ? path : `${this.baseUrl}/${rel}`) + toQuery(params);
+    const headers = { Accept: "application/json" };
+    if (this.viaProxy) headers["X-Flavours-Token"] = this.token;
+    else headers.Authorization = `Bearer ${this.token}`;
     if (version) headers["X-API-Version"] = version;
     if (body !== undefined) headers["Content-Type"] = "application/json";
+    const credentials = this.viaProxy ? "same-origin" : "omit";
     let lastErr = null;
     for (let attempt = 0; attempt <= retries; attempt++) {
       let resp;
       try {
-        resp = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), credentials: "omit" });
+        resp = await fetch(url, { method, headers, body: body === undefined ? undefined : JSON.stringify(body), credentials });
       } catch (e) {
         lastErr = e;
         await sleep(1500 * (attempt + 1));
@@ -69,6 +96,11 @@ export class Client {
       const text = await resp.text();
       let payload = text;
       try { payload = JSON.parse(text); } catch { /* keep text */ }
+      if (this.viaProxy && resp.status >= 400 && !resp.headers.get("x-flavours-proxy")) {
+        // The answer came from this site, not from Q-Flavours: a Worker error (e.g. session expired) or no Worker at all.
+        if (payload?.error) throw new ApiError(payload.error, resp.status, payload);
+        throw Object.assign(new ApiError(`لا يوجد خادم وسيط على هذا الموقع (HTTP ${resp.status})`, resp.status), { proxyMissing: true });
+      }
       if (resp.status >= 400) throw new ApiError(`HTTP ${resp.status}: ${errorText(payload)}`, resp.status, payload);
       const code = payload?.meta?.code;
       if (typeof code === "number" && code >= 400) throw new ApiError(`API ${code}: ${errorText(payload)}`, code, payload);
