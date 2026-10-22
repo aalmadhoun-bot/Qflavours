@@ -53,7 +53,7 @@ function planOrderTypes(sheets, ctx, log) {
   if (!ctx.orderTypeCatalog) return [];
   const plan = new Map();
   const warned = new Set();
-  for (const name of priceColumnNames(sheets)) {
+  for (const name of priceColumnNames(sheets, ctx)) {
     const key = ctx.resolvePriceKey(name);
     if (key !== null) {
       const t = ctx.orderType(key);
