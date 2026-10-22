@@ -1,4 +1,4 @@
-import { fail, findUser, json, publicUser, sessionCookie } from "../../lib/auth.js";
+import { fail, findUser, json, publicUser, sessionCookie } from "../auth.js";
 
 export async function onRequestPost({ request, env }) {
   const { email } = await request.json().catch(() => ({}));

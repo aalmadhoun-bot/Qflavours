@@ -1,4 +1,4 @@
-// Shared helpers for the Cloudflare Pages Functions in functions/ (site login and users).
+// Shared helpers for the Worker in worker/ (site login and users).
 // Login is by email only for now: any email on the list gets in (password login is in commit b2af000).
 // Users live in the KV namespace bound as USERS under "user:<email>".
 // The owner account comes from the ADMIN_EMAIL secret and is never stored in KV.

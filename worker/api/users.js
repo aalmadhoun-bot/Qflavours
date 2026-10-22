@@ -1,5 +1,5 @@
 // User management (admins only): list, add or edit, delete.
-import { ROLES, fail, findUser, isOwner, json, listUsers, normEmail, publicUser, saveUser, validEmail } from "../../lib/auth.js";
+import { ROLES, fail, findUser, isOwner, json, listUsers, normEmail, publicUser, saveUser, validEmail } from "../auth.js";
 
 const notAdmin = (data) => data.user.role !== "admin" && fail("هذه العملية للمديرين فقط", 403);
 

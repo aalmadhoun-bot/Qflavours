@@ -1,4 +1,4 @@
-// Users page (admins): list, add, edit, delete — backed by functions/api/users.js.
+// Users page (admins): list, add, edit, delete — backed by worker/api/users.js.
 import { api, mountNav } from "./nav.js";
 
 const $ = (id) => document.getElementById(id);

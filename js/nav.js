@@ -1,5 +1,5 @@
 // Shared top navigation: renders the bar into <nav id="nav">, loads the signed-in user,
-// and handles sign-out (backed by functions/api/*).
+// and handles sign-out (backed by worker/api/*).
 
 const LINKS = [
   ["upload", "/#connect", "الاتصال"],

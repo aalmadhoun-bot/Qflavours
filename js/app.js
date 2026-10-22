@@ -3,7 +3,7 @@ import { readWorkbook, writeWorkbook } from "./excel.js";
 import { MODES, connect, loadContext, referenceSheets, upload } from "./uploader.js";
 import { mountNav } from "./nav.js";
 
-export const VERSION = "2.1.1";
+export const VERSION = "2.1.2";
 const $ = (id) => document.getElementById(id);
 const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null };
 const store = {
