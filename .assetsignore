@@ -7,3 +7,4 @@ worker
 wrangler.jsonc
 CLAUDE.md
 README.md
+.gitignore
