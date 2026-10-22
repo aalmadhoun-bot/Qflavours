@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>حذف المنتجات — فليفرز</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍔</text></svg>">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<nav id="nav" class="topnav"></nav>
+<main>
+
+<section class="card hidden" id="denied">
+  <h2>⛔ هذه الصفحة للمديرين فقط</h2>
+  <p class="hint">حذف المنتجات متاح للمديرين فقط. اطلب من المدير ترقية حسابك إذا كنت تحتاجه.</p>
+</section>
+
+<div id="page" class="hidden" style="display:grid;gap:18px">
+
+<section class="card warn-card">
+  <h2>⚠️ حذف المنتجات نهائي</h2>
+  <p class="hint" style="margin:0">المنتج المحذوف من فليفرز لا يمكن استرجاعه من هنا. حمّل النسخة الاحتياطية قبل الحذف، وجرّب أولاً بحذف منتج واحد أو اثنين محددين قبل حذف الكل.</p>
+</section>
+
+<section class="card">
+  <h2><span class="step">1</span> الاتصال بحسابك</h2>
+  <div class="grid">
+    <div><label for="token">مفتاح الـ API</label><input id="token" type="password" class="ltr" autocomplete="off"></div>
+  </div>
+  <details>
+    <summary>إعدادات متقدمة</summary>
+    <div class="grid" style="margin-top:10px">
+      <div><label for="market">Market ID (اختياري)</label><input id="market" type="text" class="ltr"></div>
+    </div>
+  </details>
+  <div class="row"><button id="btnConnect">🔌 اتصال وجلب المنتجات</button></div>
+  <div id="connStatus" class="status">غير متصل</div>
+</section>
+
+<section class="card hidden" id="listCard">
+  <h2><span class="step">2</span> المنتجات <span class="pill" id="count">0</span></h2>
+  <div class="row" style="margin-top:0">
+    <button id="btnBackup" class="sec">⬇️ نسخة احتياطية (Excel)</button>
+    <button id="btnReload" class="sec">🔄 تحديث القائمة</button>
+    <input id="search" type="text" placeholder="بحث بالاسم أو الرقم…" style="flex:1;min-width:180px">
+  </div>
+  <div class="table-wrap list-wrap">
+    <table>
+      <thead><tr>
+        <th style="width:36px"><input type="checkbox" id="checkAll" title="تحديد الكل (المعروض)"></th>
+        <th>ID</th><th>الاسم بالعربي</th><th>الاسم بالإنجليزي</th><th>التصنيف</th>
+      </tr></thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <p class="hint" id="selInfo">المحدد: 0</p>
+</section>
+
+<section class="card hidden" id="deleteCard">
+  <h2><span class="step">3</span> الحذف</h2>
+  <div class="radio">
+    <label><input type="radio" name="mode" value="selected" checked> حذف المنتجات المحددة فقط (<b id="selCount">0</b>)</label>
+    <label><input type="radio" name="mode" value="all"> حذف <b>كل</b> المنتجات (<b id="allCount">0</b>)</label>
+  </div>
+  <div class="grid" style="margin-top:8px">
+    <div><label for="confirmText" id="confirmLabel"></label><input id="confirmText" type="text" autocomplete="off"></div>
+  </div>
+  <div class="row">
+    <button id="btnDelete" class="danger-solid" disabled>🗑️ حذف</button>
+    <button id="btnStop" class="sec hidden">⏹️ إيقاف</button>
+  </div>
+  <progress id="prog" value="0" max="1" class="hidden"></progress>
+  <div id="result" class="hidden">
+    <div class="metrics">
+      <div class="metric"><b id="mDone" style="color:var(--ok)">0</b>حُذف</div>
+      <div class="metric"><b id="mFail" style="color:var(--bad)">0</b>فشل</div>
+      <div class="metric"><b id="mLeft">0</b>متبقٍ</div>
+    </div>
+    <div id="resMsg" class="status"></div>
+    <div class="row"><button id="btnReport" class="sec">⬇️ تحميل تقرير الحذف</button></div>
+  </div>
+</section>
+
+<section class="card">
+  <h2>📜 السجل</h2>
+  <pre id="log">—</pre>
+</section>
+
+</div>
+</main>
+<script src="vendor/exceljs.min.js"></script>
+<script type="module" src="js/delete.js"></script>
+</body>
+</html>

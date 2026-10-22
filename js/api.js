@@ -227,6 +227,7 @@ export class Client {
 
   createProduct(body) { return this.request("POST", "products", { body, version: PRODUCT_API_VERSION, retries: 1 }).then((p) => p?.data ?? p); }
   updateProduct(id, body) { return this.request("POST", `products/${id}`, { body, version: PRODUCT_API_VERSION, retries: 1 }).then((p) => p?.data ?? p); }
+  deleteProduct(id) { return this.request("DELETE", `products/${id}`, { version: PRODUCT_API_VERSION, retries: 1 }); }
 }
 
 function normIngredient(o) {

@@ -6,6 +6,7 @@ const LINKS = [
   ["upload", "/#templates", "القوالب"],
   ["upload", "/#upload", "الرفع"],
   ["upload", "/#log-card", "السجل"],
+  ["delete", "/delete", "حذف المنتجات", true],
   ["users", "/users", "المستخدمون", true],
 ];
 
@@ -22,6 +23,29 @@ export async function api(path, { method = "GET", body } = {}) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
+}
+
+// In-page confirmation dialog. Native confirm() is silently refused (returns false, shows nothing)
+// in some embedded browsers, which made irreversible buttons look dead. Cancel has focus by default.
+export function askConfirm(message, { ok = "متابعة", danger = false } = {}) {
+  let dlg = document.getElementById("confirmDlg");
+  if (!dlg) {
+    dlg = Object.assign(document.createElement("dialog"), { id: "confirmDlg" });
+    dlg.innerHTML = `<form method="dialog">
+      <p id="confirmMsg" style="white-space:pre-line;margin:0 0 16px"></p>
+      <div class="row" style="margin:0;justify-content:flex-end">
+        <button value="cancel" class="sec">إلغاء</button><button value="ok" id="confirmOk"></button>
+      </div></form>`;
+    document.body.appendChild(dlg);
+  }
+  dlg.querySelector("#confirmMsg").textContent = message;
+  const btn = dlg.querySelector("#confirmOk");
+  btn.textContent = ok;
+  btn.className = danger ? "danger-solid" : "";
+  dlg.returnValue = "";
+  dlg.showModal();
+  dlg.querySelector('button[value="cancel"]').focus();
+  return new Promise((resolve) => dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"), { once: true }));
 }
 
 // Renders the bar synchronously, then resolves with the signed-in user.
@@ -46,7 +70,7 @@ export async function mountNav(page) {
   $("navToggle").onclick = () => $("navToggle").setAttribute("aria-expanded", nav.classList.toggle("open"));
   $("navMenu").addEventListener("click", (e) => { if (e.target.closest("a")) nav.classList.remove("open"); });
   const setActive = () => nav.querySelectorAll(".nav-menu a").forEach((a) => {
-    const here = page === "users" ? a.dataset.page === "users" : a.getAttribute("href") === "/" + (location.hash || "#connect");
+    const here = page !== "upload" ? a.dataset.page === page : a.getAttribute("href") === "/" + (location.hash || "#connect");
     a.classList.toggle("active", here);
   });
   setActive();

@@ -1,9 +1,9 @@
 import { DEFAULT_BASE_URL } from "./api.js";
-import { readWorkbook, writeWorkbook } from "./excel.js";
+import { readWorkbook, saveXlsx as download, stamp, writeWorkbook } from "./excel.js";
 import { MODES, connect, loadContext, referenceSheets, upload } from "./uploader.js";
-import { mountNav } from "./nav.js";
+import { askConfirm, mountNav } from "./nav.js";
 
-export const VERSION = "2.2.0";
+export const VERSION = "2.3.1";
 const $ = (id) => document.getElementById(id);
 const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null };
 const store = {
@@ -25,13 +25,6 @@ function refresh() {
   $("btnLive").disabled = !c || !state.sheets || state.busy || !$("confirm").checked;
   $("btnConnect").disabled = state.busy;
 }
-function download(buffer, name) {
-  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
-  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name });
-  document.body.appendChild(a); a.click(); a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
-}
-const stamp = () => new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
 async function busy(fn) {
   state.busy = true; refresh();
   try { return await fn(); } finally { state.busy = false; refresh(); }
@@ -100,8 +93,8 @@ async function loadFile(f) {
   refresh();
 }
 
-function run(live) {
-  if (live && !confirm("سيتم رفع البيانات فعلياً على فليفرز. متابعة؟")) return;
+async function run(live) {
+  if (live && !(await askConfirm("سيتم رفع البيانات فعلياً على فليفرز. متابعة؟", { ok: "🚀 رفع فعلي" }))) return;
   busy(async () => {
     clearLog();
     $("prog").classList.remove("hidden"); $("prog").value = 0; $("result").classList.add("hidden");

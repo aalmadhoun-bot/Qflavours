@@ -40,6 +40,15 @@ export async function readWorkbook(arrayBuffer) {
   return out;
 }
 
+export const stamp = () => new Date().toISOString().replace(/[-:T]/g, "").slice(0, 14);
+
+export function saveXlsx(buffer, name) {
+  const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: name });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
+
 export async function writeWorkbook(sheets) {
   const wb = new (X().Workbook)();
   for (const [name, rows] of Object.entries(sheets)) {
