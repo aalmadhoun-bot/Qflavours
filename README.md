@@ -56,6 +56,7 @@ npx wrangler preview base-config secret put SESSION_SECRET
 |---|---|
 | `index.html` | الواجهة |
 | `login.html` / `users.html` | صفحة الدخول وصفحة إدارة المستخدمين |
+| `delete.html` / `js/delete.js` | تبويب **حذف المنتجات** (للمديرين): جلب المنتجات، نسخة احتياطية Excel، حذف المحدد أو الكل مع تأكيد، إيقاف، وتقرير |
 | `css/app.css` | التنسيق المشترك لكل الصفحات |
 | `js/app.js` | ربط الواجهة بالمنطق |
 | `js/nav.js` | الشريط العلوي (التنقل، الحساب، الخروج) |
@@ -78,6 +79,7 @@ npx wrangler preview base-config secret put SESSION_SECRET
 - أسعار التطبيقات: لكل خيار `prices[] = {priceable_type: "ORDER_TYPE", priceable_id: <مفتاح نوع الطلب>, value_type: "NOMINAL", value: السعر النهائي − السعر الأساسي}`.
 - التصنيفات: `GET/POST /product-categories` مع `X-API-Version: 2.8.0` و `filter[scope]=MANAGE`.
 - لا يُرفع أي منتج أو خيار بدون سعر أو بسعر 0.
+- حذف المنتجات: `DELETE /products/{id}` مع `X-API-Version: 2.5.0`، منتجاً منتجاً بالتتابع. الحذف نهائي؛ حمّل النسخة الاحتياطية أولاً وجرّب على منتج محدد قبل حذف الكل.
 
 ## تجربة محلية
 ```bash

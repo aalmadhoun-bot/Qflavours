@@ -6,6 +6,7 @@ const LINKS = [
   ["upload", "/#templates", "القوالب"],
   ["upload", "/#upload", "الرفع"],
   ["upload", "/#log-card", "السجل"],
+  ["delete", "/delete", "حذف المنتجات", true],
   ["users", "/users", "المستخدمون", true],
 ];
 
@@ -46,7 +47,7 @@ export async function mountNav(page) {
   $("navToggle").onclick = () => $("navToggle").setAttribute("aria-expanded", nav.classList.toggle("open"));
   $("navMenu").addEventListener("click", (e) => { if (e.target.closest("a")) nav.classList.remove("open"); });
   const setActive = () => nav.querySelectorAll(".nav-menu a").forEach((a) => {
-    const here = page === "users" ? a.dataset.page === "users" : a.getAttribute("href") === "/" + (location.hash || "#connect");
+    const here = page !== "upload" ? a.dataset.page === page : a.getAttribute("href") === "/" + (location.hash || "#connect");
     a.classList.toggle("active", here);
   });
   setActive();
