@@ -16,7 +16,7 @@
 - `js/builder.js` قراءة الأوراق والتحقق وبناء الـ payload.
 - `js/api.js` عميل Q-Flavours — `js/uploader.js` تسلسل الرفع — `js/excel.js` قراءة/كتابة Excel.
 - `templates/` قوالب Excel (الأوراق: Products, Modifiers, Recipes, Delivery_Prices, Price_Rules, Ingredients_Map).
-- `css/app.css` تنسيق مشترك — `js/nav.js` الشريط العلوي ودالة `api()` — `login.html`/`js/login.js` — `users.html`/`js/users.js`.
+- `css/app.css` تنسيق مشترك — `js/nav.js` الشريط الجانبي الأيمن (`.sidenav`، شريط علوي تحت 860px) ودالة `api()` و`askConfirm()` — `img/` الشعار والأيقونة (مسموحان بدون دخول في `worker/middleware.js` لصفحة الدخول) — `login.html`/`js/login.js` — `users.html`/`js/users.js`.
 - `delete.html`/`js/delete.js` تبويب حذف المنتجات (مديرون فقط في الواجهة؛ الصلاحية الفعلية هي مفتاح فليفرز). تأكيد بكتابة "احذف" أو "احذف الكل" ثم confirm، حذف متتابع قابل للإيقاف، وتقرير Excel. `saveXlsx`/`stamp` في `js/excel.js` مشتركة مع `app.js`.
 - حذف المنتج: `DELETE /products/{id}` (X-API-Version 2.5.0) — سلوك الخادم (حذف/أرشفة/رفض لمنتج مرتبط بطلبات) غير موثق؛ 404 يُعامل كـ "غير موجود".
 - `worker/` الكود الوحيد الذي يعمل على الخادم: `index.js` (المدخل والتوجيه)، `middleware.js`، `api/*.js`، `auth.js`.

@@ -1,13 +1,13 @@
-// Shared top navigation: renders the bar into <nav id="nav">, loads the signed-in user,
-// and handles sign-out (backed by worker/api/*).
+// Shared navigation: renders the right-hand sidebar (a top bar with a menu button on phones) into
+// <nav id="nav">, loads the signed-in user, and handles sign-out (backed by worker/api/*).
 
 const LINKS = [
-  ["upload", "/#connect", "الاتصال"],
-  ["upload", "/#templates", "القوالب"],
-  ["upload", "/#upload", "الرفع"],
-  ["upload", "/#log-card", "السجل"],
-  ["delete", "/delete", "حذف المنتجات", true],
-  ["users", "/users", "المستخدمون", true],
+  ["upload", "/#connect", "🔌", "الاتصال"],
+  ["upload", "/#templates", "📄", "القوالب"],
+  ["upload", "/#upload", "⬆️", "الرفع"],
+  ["upload", "/#log-card", "📜", "السجل"],
+  ["delete", "/delete", "🗑️", "حذف المنتجات", true],
+  ["users", "/users", "👥", "المستخدمون", true],
 ];
 
 export async function api(path, { method = "GET", body } = {}) {
@@ -51,18 +51,24 @@ export function askConfirm(message, { ok = "متابعة", danger = false } = {}
 // Renders the bar synchronously, then resolves with the signed-in user.
 export async function mountNav(page) {
   const nav = document.getElementById("nav");
-  nav.className = "topnav";
+  nav.className = "sidenav";
+  document.body.classList.add("with-side");
+  const link = ([p, href, icon, text, admin]) =>
+    `<a href="${href}" data-page="${p}"${admin ? ' data-admin class="hidden"' : ""}><span class="ic">${icon}</span>${text}</a>`;
   nav.innerHTML = `
-    <div class="nav-in">
-      <a class="brand" href="/">🍔 <span>أداة رفع بيانات فليفرز</span> <small id="ver"></small></a>
+    <div class="side-head">
+      <a class="brand" href="/"><img src="/img/flavours-logo.png" alt="فليفرز"></a>
       <button class="nav-toggle" id="navToggle" aria-label="القائمة" aria-expanded="false" aria-controls="navMenu">☰</button>
-      <div class="nav-menu" id="navMenu">
-        ${LINKS.map(([p, href, text, admin]) =>
-          `<a href="${href}" data-page="${p}"${admin ? ' data-admin class="hidden"' : ""}>${text}</a>`).join("")}
-        <div class="nav-user">
-          <span class="who" id="navWho">…</span>
-          <button id="navOut">خروج</button>
-        </div>
+    </div>
+    <div class="side-sub">أداة رفع البيانات <small id="ver"></small></div>
+    <div class="nav-menu" id="navMenu">
+      <div class="nav-group">الأداة</div>
+      ${LINKS.filter((l) => !l[4]).map(link).join("")}
+      <div class="nav-group hidden" data-admin>الإدارة</div>
+      ${LINKS.filter((l) => l[4]).map(link).join("")}
+      <div class="nav-user">
+        <span class="who" id="navWho">…</span>
+        <button id="navOut">خروج</button>
       </div>
     </div>`;
 

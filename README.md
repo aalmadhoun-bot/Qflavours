@@ -58,8 +58,9 @@ npx wrangler preview base-config secret put SESSION_SECRET
 | `login.html` / `users.html` | صفحة الدخول وصفحة إدارة المستخدمين |
 | `delete.html` / `js/delete.js` | تبويب **حذف المنتجات** (للمديرين): جلب المنتجات، نسخة احتياطية Excel، حذف المحدد أو الكل مع تأكيد، إيقاف، وتقرير |
 | `css/app.css` | التنسيق المشترك لكل الصفحات |
+| `img/` | شعار فليفرز (`flavours-logo.png` من موقع فليفرز الرسمي) وأيقونة التبويب `flavours-icon.png` |
 | `js/app.js` | ربط الواجهة بالمنطق |
-| `js/nav.js` | الشريط العلوي (التنقل، الحساب، الخروج) |
+| `js/nav.js` | الشريط الجانبي على يمين الصفحة (التنقل، الحساب، الخروج)، ويتحول لشريط علوي بزر قائمة على الجوال |
 | `js/users.js` / `js/login.js` | منطق صفحتي المستخدمين والدخول |
 | `wrangler.jsonc` / `.assetsignore` | إعداد الـ Worker والملفات التي لا تُنشر كملفات عامة |
 | `worker/` | كود الخادم: `index.js` المدخل، `middleware.js` حماية الموقع، `api/` لـ `/api/login`, `/api/me`, `/api/users`, `/api/logout`، و`/api/flavours/*` (تمرير إلى فليفرز بـ API-TOKEN) |
