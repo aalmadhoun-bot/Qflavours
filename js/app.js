@@ -2,7 +2,7 @@ import { DEFAULT_BASE_URL } from "./api.js";
 import { readWorkbook, writeWorkbook } from "./excel.js";
 import { MODES, connect, loadContext, referenceSheets, upload } from "./uploader.js";
 
-export const VERSION = "2.0.0";
+export const VERSION = "2.0.1";
 const $ = (id) => document.getElementById(id);
 const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null };
 const store = {
