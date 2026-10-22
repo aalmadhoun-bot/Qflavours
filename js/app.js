@@ -1,8 +1,9 @@
 import { DEFAULT_BASE_URL } from "./api.js";
 import { readWorkbook, writeWorkbook } from "./excel.js";
 import { MODES, connect, loadContext, referenceSheets, upload } from "./uploader.js";
+import { mountNav } from "./nav.js";
 
-export const VERSION = "2.0.1";
+export const VERSION = "2.1.0";
 const $ = (id) => document.getElementById(id);
 const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null };
 const store = {
@@ -37,6 +38,7 @@ async function busy(fn) {
 }
 
 function init() {
+  mountNav("upload").catch((e) => log("❌ " + e.message));
   $("ver").textContent = "v" + VERSION;
   $("base").value = store.get("flv_base") || DEFAULT_BASE_URL;
   const saved = store.get("flv_token");

@@ -16,6 +16,16 @@
 - `js/builder.js` قراءة الأوراق والتحقق وبناء الـ payload.
 - `js/api.js` عميل Q-Flavours — `js/uploader.js` تسلسل الرفع — `js/excel.js` قراءة/كتابة Excel.
 - `templates/` قوالب Excel (الأوراق: Products, Modifiers, Recipes, Delivery_Prices, Price_Rules, Ingredients_Map).
+- `css/app.css` تنسيق مشترك — `js/nav.js` الشريط العلوي ودالة `api()` — `login.html`/`js/login.js` — `users.html`/`js/users.js`.
+- `functions/` (Cloudflare Pages Functions) + `lib/auth.js`: الوحيدان اللذان يعملان على الخادم.
+
+## تسجيل الدخول والمستخدمين
+- `functions/_middleware.js` يحمي كل الطلبات؛ المسموح بدون دخول: `/login`, `/js/login.js`, `/css/app.css`, `/api/login` (لذلك `login.js` لا يستورد أي ملف آخر).
+- مطلوب في Cloudflare: KV باسم `USERS`، وأسرار `ADMIN_EMAIL`, `ADMIN_PASSWORD`, `SESSION_SECRET`.
+- المالك (من الأسرار) لا يُخزَّن في KV ولا يُحذف. باقي المستخدمين `user:<email>` في KV مع PBKDF2 (100k، حد Workers).
+- الأدوار: `user` يستخدم الأداة، `admin` يدير المستخدمين أيضاً. الجلسة كوكي موقّع 12 ساعة، و`pv` يزيد عند تغيير كلمة المرور فتنتهي الجلسات القديمة.
+- في Pages Functions لا يُستدعى `onRequest` قبل `onRequestGet` في نفس الملف — تحقق الصلاحية داخل كل handler.
+- نسخة GitHub Pages بلا Functions، فهي غير محمية.
 
 ## Q-Flavours API (مستخرج من تطبيق qflavours.qoyod.com — غير موثق علناً)
 - القاعدة: `https://qflavours-api.qoyod.com/pos/api/v2`

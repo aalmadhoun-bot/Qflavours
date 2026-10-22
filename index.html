@@ -5,51 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>رفع بيانات فليفرز</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🍔</text></svg>">
-<style>
-:root{--bg:#f4f6f9;--card:#fff;--ink:#1d2433;--mute:#667085;--line:#e4e7ec;--pri:#1f4e78;--ok:#0f7b4b;--bad:#c0392b;--warn:#b7791f}
-*{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Segoe UI",Tahoma,Arial,sans-serif}
-header{background:var(--pri);color:#fff;padding:18px 28px;display:flex;align-items:center;gap:12px;flex-wrap:wrap}
-header h1{font-size:20px;margin:0}
-header small{opacity:.8}
-main{max-width:1100px;margin:22px auto;padding:0 16px;display:grid;gap:18px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px}
-.card h2{margin:0 0 14px;font-size:17px;display:flex;align-items:center;gap:8px}
-.step{background:var(--pri);color:#fff;border-radius:50%;width:26px;height:26px;display:inline-grid;place-items:center;font-size:14px}
-.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
-label{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
-input[type=text],input[type=password]{width:100%;padding:9px 11px;border:1px solid var(--line);border-radius:8px;font:inherit;background:#fff}
-input.ltr{direction:ltr;text-align:left}
-button,a.btn{font:inherit;border:0;border-radius:8px;padding:10px 18px;cursor:pointer;background:var(--pri);color:#fff;text-decoration:none;display:inline-block}
-.sec{background:#eef2f7 !important;color:var(--pri) !important}
-.go{background:var(--ok) !important}
-button:disabled{opacity:.45;cursor:not-allowed}
-.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:14px}
-.pill{display:inline-block;background:#eef2f7;border-radius:20px;padding:3px 10px;margin:2px;font-size:12px;direction:ltr}
-.status{margin-top:12px;padding:10px 12px;border-radius:8px;background:#f8fafc;border:1px dashed var(--line);font-size:14px;white-space:pre-line}
-.status.ok{border-color:var(--ok);color:var(--ok);background:#effaf4}
-.status.bad{border-color:var(--bad);color:var(--bad);background:#fdf1f0}
-table{border-collapse:collapse;width:100%;font-size:14px}
-td,th{border-bottom:1px solid var(--line);padding:6px 8px;text-align:right}
-.drop{border:2px dashed var(--line);border-radius:10px;padding:22px;text-align:center;color:var(--mute);cursor:pointer}
-.drop.has{border-color:var(--ok);color:var(--ok)}
-.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-top:14px}
-.metric{background:#f8fafc;border-radius:10px;padding:10px;text-align:center}
-.metric b{display:block;font-size:24px}
-progress{width:100%;height:10px;margin-top:12px}
-pre{background:#0f172a;color:#e2e8f0;border-radius:10px;padding:14px;max-height:340px;overflow:auto;font:13px/1.5 Consolas,monospace;white-space:pre-wrap;direction:rtl;text-align:right;margin:0}
-.radio label{display:flex;gap:8px;align-items:center;color:var(--ink);font-size:14px;margin:6px 0}
-.hint{color:var(--mute);font-size:13px}
-details summary{cursor:pointer;color:var(--mute);font-size:13px;margin-top:10px}
-.hidden{display:none}
-@media (max-width:600px){header{padding:14px 16px}.card{padding:16px}}
-</style>
+<link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-<header><h1>🍔 أداة رفع بيانات فليفرز</h1><small id="ver"></small></header>
+<nav id="nav" class="topnav"></nav>
 <main>
 
-<section class="card">
+<section class="card" id="connect">
   <h2><span class="step">1</span> الاتصال بحسابك</h2>
   <div class="grid">
     <div><label>مفتاح الـ API</label><input id="token" type="password" class="ltr" autocomplete="off"></div>
@@ -68,7 +30,7 @@ details summary{cursor:pointer;color:var(--mute);font-size:13px;margin-top:10px}
   <p class="hint">المفتاح لا يُرسل إلا إلى خادم فليفرز مباشرة من متصفحك — لا يوجد خادم وسيط.</p>
 </section>
 
-<section class="card">
+<section class="card" id="templates">
   <h2><span class="step">2</span> القالب والبيانات المرجعية</h2>
   <p class="hint">حمّل القالب وعبّئه. التصنيفات غير الموجودة تُنشأ تلقائياً، أما المواد الخام فيجب أن تكون موجودة في فليفرز. صدّر البيانات المرجعية لمعرفة أسماء التصنيفات والمواد الخام وأنواع الطلب (التطبيقات).</p>
   <div class="row">
@@ -87,7 +49,7 @@ details summary{cursor:pointer;color:var(--mute);font-size:13px;margin-top:10px}
   </table>
 </section>
 
-<section class="card">
+<section class="card" id="upload">
   <h2><span class="step">3</span> الرفع</h2>
   <div id="drop" class="drop">اضغط لاختيار ملف Excel المعبأ (.xlsx) أو اسحبه هنا</div>
   <input id="file" type="file" accept=".xlsx" class="hidden">
@@ -118,7 +80,7 @@ details summary{cursor:pointer;color:var(--mute);font-size:13px;margin-top:10px}
   </div>
 </section>
 
-<section class="card">
+<section class="card" id="log-card">
   <h2>📜 السجل</h2>
   <pre id="log">—</pre>
 </section>
