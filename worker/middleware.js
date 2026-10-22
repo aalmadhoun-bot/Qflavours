@@ -1,7 +1,7 @@
 // Runs before every request (pages, scripts, templates and /api): only signed-in users get through.
 import { configError, fail, sessionUser } from "./auth.js";
 
-const PUBLIC = new Set(["/login", "/login.html", "/js/login.js", "/css/app.css", "/api/login"]);
+const PUBLIC = new Set(["/login", "/login.html", "/js/login.js", "/css/app.css", "/api/login", "/img/flavours-logo.png", "/img/flavours-icon.png"]);
 
 export async function onRequest({ request, env, data, next }) {
   const url = new URL(request.url);

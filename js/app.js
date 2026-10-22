@@ -3,7 +3,7 @@ import { readWorkbook, saveXlsx as download, stamp, writeWorkbook } from "./exce
 import { MODES, connect, loadContext, referenceSheets, upload } from "./uploader.js";
 import { askConfirm, mountNav } from "./nav.js";
 
-export const VERSION = "2.3.1";
+export const VERSION = "2.4.0";
 const $ = (id) => document.getElementById(id);
 const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null };
 const store = {
