@@ -14,11 +14,11 @@ export async function connect(token, baseUrl, log) {
   try { me = await client.me(); }
   catch (e) {
     if (e.status === 401 || e.status === 403) {
-      throw new ApiError(`${e.message}\nالمفتاح غير مقبول. تأكد من نسخه كاملاً، ومن أنه مفعّل للاستخدام عبر الـ API (Bearer).`, e.status);
+      throw new ApiError(`${e.message}\nالمفتاح غير مقبول (جُرّب بطريقتي Bearer و API-TOKEN). تأكد من نسخه كاملاً، ومن أنه مفعّل للاستخدام عبر الـ API.`, e.status);
     }
     throw e;
   }
-  log(`✓ متصل: ${client.baseUrl}`);
+  log(`✓ متصل: ${client.baseUrl}${client.viaProxy ? " (عبر خادم الموقع — API-TOKEN)" : " (Bearer مباشرة)"}`);
   return { client, me };
 }
 

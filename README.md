@@ -61,7 +61,7 @@ npx wrangler preview base-config secret put SESSION_SECRET
 | `js/nav.js` | الشريط العلوي (التنقل، الحساب، الخروج) |
 | `js/users.js` / `js/login.js` | منطق صفحتي المستخدمين والدخول |
 | `wrangler.jsonc` / `.assetsignore` | إعداد الـ Worker والملفات التي لا تُنشر كملفات عامة |
-| `worker/` | كود الخادم: `index.js` المدخل، `middleware.js` حماية الموقع، `api/` لـ `/api/login`, `/api/me`, `/api/users`, `/api/logout` |
+| `worker/` | كود الخادم: `index.js` المدخل، `middleware.js` حماية الموقع، `api/` لـ `/api/login`, `/api/me`, `/api/users`, `/api/logout`، و`/api/flavours/*` (تمرير إلى فليفرز بـ API-TOKEN) |
 | `worker/auth.js` | الجلسات الموقّعة وتخزين المستخدمين في KV |
 | `js/builder.js` | قراءة القالب، التحقق من البيانات، وبناء طلبات المنتجات |
 | `js/api.js` | الاتصال بـ Q-Flavours API |
@@ -72,8 +72,8 @@ npx wrangler preview base-config secret put SESSION_SECRET
 
 ## ملاحظات تقنية
 - العنوان الافتراضي: `https://qflavours-api.qoyod.com/pos/api/v2` (قابل للتغيير من "إعدادات متقدمة").
-- المصادقة عبر `Authorization: Bearer` فقط؛ هيدر `API-TOKEN` يمنعه المتصفح لهذا الخادم (CORS) عند الاستخدام من موقع آخر.
-  إذا ظهر خطأ 401/403 والمفتاح صحيح، فالمفتاح لا يعمل بطريقة Bearer — استخدم نسخة سطح المكتب (exe).
+- المصادقة: أولاً `Authorization: Bearer` من المتصفح مباشرة. هيدر `API-TOKEN` يمنعه خادم فليفرز من المتصفحات (CORS)، فإذا رُفض Bearer بـ 401/403 تنتقل الأداة تلقائياً إلى `/api/flavours/*` في الـ Worker، الذي يعيد إرسال الطلب نفسه بهيدر `API-TOKEN` (المفتاح لا يُخزَّن ولا يُسجَّل).
+  هذا التحويل يعمل على نسخة Cloudflare فقط؛ نسخة GitHub Pages تبقى بـ Bearer وحده.
 - المنتجات: `POST /products` و `POST /products/{id}` مع `X-API-Version: 2.5.0`، والخيارات في `options`.
 - أسعار التطبيقات: لكل خيار `prices[] = {priceable_type: "ORDER_TYPE", priceable_id: <مفتاح نوع الطلب>, value_type: "NOMINAL", value: السعر النهائي − السعر الأساسي}`.
 - التصنيفات: `GET/POST /product-categories` مع `X-API-Version: 2.8.0` و `filter[scope]=MANAGE`.

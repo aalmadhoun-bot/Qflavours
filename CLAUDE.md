@@ -31,7 +31,8 @@
 
 ## Q-Flavours API (مستخرج من تطبيق qflavours.qoyod.com — غير موثق علناً)
 - القاعدة: `https://qflavours-api.qoyod.com/pos/api/v2`
-- المصادقة من المتصفح: `Authorization: Bearer <token>` فقط — هيدر `API-TOKEN` يمنعه CORS من مواقع أخرى.
+- المصادقة من المتصفح: `Authorization: Bearer <token>` فقط — هيدر `API-TOKEN` يمنعه CORS من مواقع أخرى (تحقق 2026-10-22: `Access-Control-Allow-Headers` لا يشمله).
+- بـ Bearer: مفتاح خاطئ أو مفتاح غير مدعوم يعطي 403 مثل الطلب بلا مفتاح؛ بـ `API-TOKEN` المفتاح الخاطئ يعطي 401. لذلك `js/api.js` يجرّب Bearer ثم عند 401/403 يتحول إلى `/api/flavours/*` (worker/api/flavours.js) الذي يرسل `API-TOKEN` من الخادم. التمرير مثبّت على `qflavours-api.qoyod.com/pos/api/v2` فقط (ليس proxy مفتوحاً).
 - `GET /me` → market من `userable.market.id`.
 - التصنيفات: `GET /product-categories?filter[scope]=MANAGE&filter[market_id]=…` و `POST /product-categories {name_en, name_ar, icon}` مع `X-API-Version: 2.8.0`. الاسم المكرر → 422 "already exists" (ابحث عنه واربط به).
 - أنواع الطلب: `GET /orders/types` (كل عنصر فيه `key`).
