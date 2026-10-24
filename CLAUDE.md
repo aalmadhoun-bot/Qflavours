@@ -12,7 +12,7 @@
 - لا تضع أي مفتاح API أو بيانات حساب في المستودع (المستودع عام).
 
 ## الملفات
-- `index.html` الواجهة (RTL) — `js/app.js` ربط الواجهة.
+- `index.html` الواجهة (RTL) — `js/app.js` ربط الواجهة. صفحة الرفع خطوات متتابعة: كل قسم `data-pane="1|2|3"` شاشة مستقلة بعنوان `#step-1/2/3` (يعمل زر الرجوع في المتصفح)، شريط تقدم `#stepper`، الخطوتان 2 و3 مقفلتان قبل الاتصال (`showStep` يعيد إلى 1)، وبعد نجاح الاتصال انتقال تلقائي للخطوة 2. الروابط القديمة `#connect/#templates/#upload` ما زالت تعمل.
 - `js/builder.js` قراءة الأوراق والتحقق وبناء الـ payload.
 - `js/api.js` عميل Q-Flavours — `js/uploader.js` تسلسل الرفع — `js/excel.js` قراءة/كتابة Excel.
 - `templates/` قوالب Excel (الأوراق: Products, Modifiers, Recipes, Delivery_Prices, Price_Rules, Ingredients_Map).

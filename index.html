@@ -11,7 +11,13 @@
 <nav id="nav" class="sidenav"></nav>
 <main>
 
-<section class="card" id="connect">
+<ol class="stepper" id="stepper" aria-label="خطوات الرفع">
+  <li data-step="1"><button type="button"><span class="num">1</span><span class="lbl">الاتصال بحسابك</span></button></li>
+  <li data-step="2"><button type="button"><span class="num">2</span><span class="lbl">القالب والبيانات المرجعية</span></button></li>
+  <li data-step="3"><button type="button"><span class="num">3</span><span class="lbl">الرفع</span></button></li>
+</ol>
+
+<section class="card" id="connect" data-pane="1">
   <h2><span class="step">1</span> الاتصال بحسابك</h2>
   <div class="grid">
     <div><label>مفتاح الـ API</label><input id="token" type="password" class="ltr" autocomplete="off"></div>
@@ -27,10 +33,11 @@
   </details>
   <div class="row"><button id="btnConnect">🔌 اتصال وتحميل البيانات المرجعية</button></div>
   <div id="connStatus" class="status">غير متصل</div>
+  <div class="row step-nav hidden" id="next1"><span class="hint">متصل — يمكنك المتابعة</span><button data-go="2">التالي: القالب ←</button></div>
   <p class="hint">يُرسل المفتاح أولاً من متصفحك إلى خادم فليفرز مباشرة؛ وإن رفضه بتلك الطريقة يمر عبر خادم هذا الموقع ليُرسَل بهيدر API-TOKEN. لا يُخزَّن المفتاح على الخادم ولا يُسجَّل.</p>
 </section>
 
-<section class="card" id="templates">
+<section class="card hidden" id="templates" data-pane="2">
   <h2><span class="step">2</span> القالب والبيانات المرجعية</h2>
   <p class="hint">حمّل القالب وعبّئه. التصنيفات والتطبيقات (أنواع الطلب) غير الموجودة تُنشأ تلقائياً، أما المواد الخام فيجب أن تكون موجودة في فليفرز. بعد الاتصال حمّل <b>القالب الجاهز لحسابك</b>: أعمدة أسعار التطبيقات فيه هي أنواع الطلب المسجلة فعلياً في حسابك.</p>
   <div class="row">
@@ -48,9 +55,13 @@
     <tr><td>Price_Rules</td><td>نسبة زيادة تلقائية لكل تطبيق مع التقريب</td></tr>
     <tr><td>Ingredients_Map</td><td>ربط اسم مادة خام برقمها (اختياري)</td></tr>
   </table>
+  <div class="row step-nav">
+    <button class="sec" data-go="1">→ رجوع</button>
+    <button data-go="3">التالي: الرفع ←</button>
+  </div>
 </section>
 
-<section class="card" id="upload">
+<section class="card hidden" id="upload" data-pane="3">
   <h2><span class="step">3</span> الرفع</h2>
   <div id="drop" class="drop">اضغط لاختيار ملف Excel المعبأ (.xlsx) أو اسحبه هنا</div>
   <input id="file" type="file" accept=".xlsx" class="hidden">
@@ -79,6 +90,9 @@
     </div>
     <div id="resMsg" class="status"></div>
     <div class="row"><button id="btnReport" class="sec">⬇️ تحميل تقرير النتائج</button></div>
+  </div>
+  <div class="row step-nav">
+    <button class="sec" data-go="2">→ رجوع إلى القالب</button>
   </div>
 </section>
 

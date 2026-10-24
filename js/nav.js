@@ -2,9 +2,9 @@
 // <nav id="nav">, loads the signed-in user, and handles sign-out (backed by worker/api/*).
 
 const LINKS = [
-  ["upload", "/#connect", "🔌", "الاتصال"],
-  ["upload", "/#templates", "📄", "القوالب"],
-  ["upload", "/#upload", "⬆️", "الرفع"],
+  ["upload", "/#step-1", "🔌", "1. الاتصال"],
+  ["upload", "/#step-2", "📄", "2. القالب"],
+  ["upload", "/#step-3", "⬆️", "3. الرفع"],
   ["upload", "/#log-card", "📜", "السجل"],
   ["delete", "/delete", "🗑️", "حذف المنتجات", true],
   ["users", "/users", "👥", "المستخدمون", true],
@@ -76,7 +76,7 @@ export async function mountNav(page) {
   $("navToggle").onclick = () => $("navToggle").setAttribute("aria-expanded", nav.classList.toggle("open"));
   $("navMenu").addEventListener("click", (e) => { if (e.target.closest("a")) nav.classList.remove("open"); });
   const setActive = () => nav.querySelectorAll(".nav-menu a").forEach((a) => {
-    const here = page !== "upload" ? a.dataset.page === page : a.getAttribute("href") === "/" + (location.hash || "#connect");
+    const here = page !== "upload" ? a.dataset.page === page : a.getAttribute("href") === "/" + (location.hash || "#step-1");
     a.classList.toggle("active", here);
   });
   setActive();

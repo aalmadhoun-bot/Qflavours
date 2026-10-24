@@ -4,9 +4,9 @@ import { MODES, connect, loadContext, referenceSheets, upload } from "./uploader
 import { askConfirm, mountNav } from "./nav.js";
 import { accountTemplate } from "./template.js";
 
-export const VERSION = "2.5.2";
+export const VERSION = "2.6.0";
 const $ = (id) => document.getElementById(id);
-const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null };
+const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null, step: 1 };
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* storage blocked */ } },
@@ -26,11 +26,51 @@ function refresh() {
   $("btnDry").disabled = !c || !state.sheets || state.busy;
   $("btnLive").disabled = !c || !state.sheets || state.busy || !$("confirm").checked;
   $("btnConnect").disabled = state.busy;
+  $("next1").classList.toggle("hidden", !c);
+  paintSteps();
 }
 async function busy(fn) {
   state.busy = true; refresh();
   try { return await fn(); } finally { state.busy = false; refresh(); }
 }
+
+// Steps: one screen at a time, each with its own address (#step-1 connect, #step-2 template, #step-3 upload)
+// so the browser's back button works. Steps 2 and 3 need a connection; the old section anchors still land.
+const OLD_ANCHORS = { "#connect": 1, "#templates": 2, "#upload": 3 };
+function stepFromHash() {
+  const m = location.hash.match(/^#step-([123])$/);
+  return m ? Number(m[1]) : OLD_ANCHORS[location.hash] ?? null;
+}
+function paintSteps() {
+  const c = !!state.ctx;
+  document.querySelectorAll("#stepper li").forEach((li) => {
+    const k = Number(li.dataset.step);
+    li.classList.toggle("active", k === state.step);
+    li.classList.toggle("done", k < state.step || (k === 1 && c));
+    li.classList.toggle("locked", k > 1 && !c);
+    li.querySelector("button").setAttribute("aria-current", k === state.step ? "step" : "false");
+  });
+}
+function showStep(n) {
+  if (n > 1 && !state.ctx) {
+    if (location.hash !== "#step-1") { location.hash = "#step-1"; return; }  // hashchange lands here again
+    n = 1;
+  }
+  state.step = n;
+  document.querySelectorAll("[data-pane]").forEach((el) => el.classList.toggle("hidden", Number(el.dataset.pane) !== n));
+  paintSteps();
+  scrollTo({ top: 0, behavior: "smooth" });
+}
+function goStep(n) {
+  if (location.hash === `#step-${n}`) showStep(n); else location.hash = `#step-${n}`;
+}
+addEventListener("hashchange", () => { const n = stepFromHash(); if (n) showStep(n); });
+document.addEventListener("click", (e) => {
+  const go = e.target.closest("[data-go]");
+  if (go) return goStep(Number(go.dataset.go));
+  const li = e.target.closest("#stepper li");
+  if (li && !li.classList.contains("locked")) goStep(Number(li.dataset.step));
+});
 
 function init() {
   mountNav("upload").catch((e) => log("❌ " + e.message));
@@ -42,6 +82,7 @@ function init() {
     .map(([k, v], i) => `<label><input type="radio" name="mode" value="${k}" ${i ? "" : "checked"}> ${v}</label>`).join("");
   $("confirm").onchange = refresh;
   refresh();
+  showStep(stepFromHash() ?? 1);
 }
 
 $("btnConnect").onclick = () => busy(async () => {
@@ -61,6 +102,7 @@ $("btnConnect").onclick = () => busy(async () => {
       التصنيفات: <b>${ctx.categories.length}</b> | المواد الخام: <b>${ctx.ingredients.length}</b><br>
       أنواع الطلب / التطبيقات: ${ctx.orderTypes.map((o) => `<span class="pill">${o.key}${o.active === false ? " (معطّل)" : ""}</span>`).join("") || "لا يوجد"}`;
     log("✅ تم الاتصال وتحميل البيانات المرجعية");
+    setTimeout(() => { if (state.step === 1 && state.ctx === ctx) goStep(2); }, 900);  // let the success show, then move on
   } catch (e) {
     state.ctx = null;
     setStatus($("connStatus"), "❌ " + e.message, "bad");
