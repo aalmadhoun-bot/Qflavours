@@ -12,7 +12,7 @@
 - لا تضع أي مفتاح API أو بيانات حساب في المستودع (المستودع عام).
 
 ## الملفات
-- `index.html` الواجهة (RTL) — `js/app.js` ربط الواجهة.
+- `index.html` الواجهة (RTL) — `js/app.js` ربط الواجهة. صفحة الرفع خطوات متتابعة: كل قسم `data-pane="1|2|3"` شاشة مستقلة بعنوان `#step-1/2/3` (يعمل زر الرجوع في المتصفح)، شريط تقدم `#stepper`، الخطوتان 2 و3 مقفلتان قبل الاتصال (`showStep` يعيد إلى 1)، وبعد نجاح الاتصال انتقال تلقائي للخطوة 2. الروابط القديمة `#connect/#templates/#upload` ما زالت تعمل.
 - `js/builder.js` قراءة الأوراق والتحقق وبناء الـ payload.
 - `js/api.js` عميل Q-Flavours — `js/uploader.js` تسلسل الرفع — `js/excel.js` قراءة/كتابة Excel.
 - `templates/` قوالب Excel (الأوراق: Products, Modifiers, Recipes, Delivery_Prices, Price_Rules, Ingredients_Map).
@@ -37,7 +37,8 @@
 - بـ Bearer: مفتاح خاطئ أو مفتاح غير مدعوم يعطي 403 مثل الطلب بلا مفتاح؛ بـ `API-TOKEN` المفتاح الخاطئ يعطي 401. لذلك `js/api.js` يجرّب Bearer ثم عند 401/403 يتحول إلى `/api/flavours/*` (worker/api/flavours.js) الذي يرسل `API-TOKEN` من الخادم. التمرير مثبّت على `qflavours-api.qoyod.com/pos/api/v2` فقط (ليس proxy مفتوحاً).
 - `GET /me` → market من `userable.market.id`.
 - التصنيفات: `GET /product-categories?filter[scope]=MANAGE&filter[market_id]=…` و `POST /product-categories {name_en, name_ar, icon}` مع `X-API-Version: 2.8.0`. الاسم المكرر → 422 "already exists" (ابحث عنه واربط به).
-- أنواع الطلب: `GET /orders/types` (كل عنصر فيه `key`).
+- أنواع الطلب: `GET /orders/types?includes[]=config` = كل الأنواع التي يعرفها فليفرز، و`is_adopted` + `config.is_active` = المسجّل/المفعّل في الحساب (الإعدادات ← أنواع الطلب). `client.orderTypes()` يرجع المسجّلة فقط؛ `orderTypeCatalog()` الكل.
+- إنشاء/تفعيل نوع طلب: `POST /orders/types/configs` مع `{type_key}` لتفعيل نوع معروف أو `{name_en, name_ar}` لنوع جديد، وبقية الحقول بقيم نموذج موقع فليفرز (`ORDER_TYPE_DEFAULTS` في `js/api.js`).
 - المواد الخام: `GET /ingredients`.
 - المنتج: `POST /products` و `POST /products/{id}` مع `X-API-Version: 2.5.0`:
   - `name_en, name_ar, description_en/ar, category_id, duration, market_id, branch_id, options[]` (نفس القائمة تُرسل أيضاً في `modifiers`).
@@ -47,6 +48,9 @@
 
 ## سلوك الأداة
 - التصنيف غير الموجود يُنشأ تلقائياً (قابل للإيقاف من الواجهة).
+- التطبيق/نوع الطلب غير المسجّل في Delivery_Prices أو Price_Rules (صف فيه قاعدة) يُفعَّل إن كان معروفاً في فليفرز أو يُنشأ كنوع جديد، في الرفع الفعلي فقط وبعد التصنيفات (`planOrderTypes`/`createOrderTypes` في `js/uploader.js`؛ قابل للإيقاف). النوع الجديد يأخذ مفتاحاً مؤقتاً `NEW:…` حتى يُنشأ، وإن فشل تُحذف أسعاره فقط.
+- أسعار التطبيقات داخل Products / Modifiers: أي عمود غير الأعمدة العادية (`PRODUCT_COLS` / `MODIFIER_COLS` في `js/builder.js`) واسمه تطبيق مسجّل أو يعرفه فليفرز = سعر ذلك السطر في ذلك التطبيق (Products = كل المنتج، Modifiers = ذلك الخيار). يغلب Delivery_Prices لنفس الخيار مع تحذير. يُستخدم `knownPriceKey` (لا يثق بعنوان مجهول) حتى لا يتحول عمود ملاحظات إلى تطبيق؛ التطبيق الجديد كلياً يُنشأ فقط من عمود في Delivery_Prices.
+- "قالب جاهز لحسابي" (`js/template.js`): يُبنى من `flavours_template_empty.xlsx` بأعمدة أنواع الطلب المسجلة والمفعّلة + ورقة Order_Types. يُكتب بـ ExcelJS من الصفر لأن ExcelJS لا يقرأ القالب الأصلي (تعليقات الخلايا)؛ القراءة بـ SheetJS.
 - المنتج الموجود بنفس `name_en` يُحدَّث (وضع upsert افتراضياً).
 - أي خطأ في الملف يوقف الرفع الفعلي كله، إلا إذا فعّل المستخدم "ارفع المنتجات السليمة".
 - أعمدة Delivery_Prices/Price_Rules تُطابق مفتاح أو اسم نوع الطلب بعد التطبيع (HUNGERSTATION = HUNGER_STATION = HungerStation).

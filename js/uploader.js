@@ -1,6 +1,6 @@
-// Orchestrates: connect -> load reference data -> validate -> create categories -> upload -> report.
+// Orchestrates: connect -> load reference data -> validate -> create categories and apps -> upload -> report.
 import { Client, ApiError } from "./api.js";
-import { Context, buildPayloads, norm } from "./builder.js";
+import { Context, buildPayloads, keynorm, norm, priceColumnNames } from "./builder.js";
 
 export const MODES = {
   upsert: "إنشاء الجديد وتحديث الموجود (بنفس الاسم الإنجليزي)",
@@ -27,13 +27,82 @@ export async function loadContext(client, me, { marketId, branchId } = {}, log) 
   branchId = branchId || Client.branchIdOf(me);
   if (!marketId) log("⚠️ لم يتم العثور على market_id — أدخله يدوياً");
   log(`• Market: ${marketId}  • Branch: ${branchId || "-"}`);
-  const [categories, orderTypes, ingredients] = await Promise.all([
-    client.categories(marketId), client.orderTypes(), client.ingredients(marketId),
+  const [categories, { orderTypes, catalog }, ingredients] = await Promise.all([
+    client.categories(marketId), loadOrderTypes(client), client.ingredients(marketId),
   ]);
   log(`• التصنيفات: ${categories.length}`);
-  log(`• أنواع الطلب/التطبيقات: ${orderTypes.map((o) => o.key + (o.name_ar ? ` (${o.name_ar})` : "")).join("، ") || "لم تُجلب"}`);
+  log(`• أنواع الطلب/التطبيقات المسجلة: ${orderTypes.map((o) => o.key + (o.name_ar ? ` (${o.name_ar})` : "") + (o.adopted && !o.active ? " — معطّل" : "")).join("، ") || "لا يوجد"}`);
   log(`• المواد الخام المعروفة: ${ingredients.length}`);
-  return new Context({ marketId, defaultBranchId: branchId, categories, ingredients, orderTypes });
+  return new Context({ marketId, defaultBranchId: branchId, categories, ingredients, orderTypes, orderTypeCatalog: catalog });
+}
+
+async function loadOrderTypes(client) {
+  try {
+    const catalog = await client.orderTypeCatalog();
+    if (catalog) return { orderTypes: catalog.filter((t) => t.adopted), catalog };
+  } catch { /* older API */ }
+  return { orderTypes: await client.legacyOrderTypes(), catalog: null };
+}
+
+// Apps named in the file that the account doesn't have yet. A type Flavours already knows (e.g. HUNGERSTATION)
+// gets adopted under its own key; any other name becomes a new custom type, whose key is only known after it is
+// created, so it gets a placeholder key until then. Pending types join the lookup so their prices are built.
+function planOrderTypes(sheets, ctx, log) {
+  ctx.pendingOrderTypes = [];
+  ctx.reindex();
+  if (!ctx.orderTypeCatalog) return [];
+  const plan = new Map();
+  const warned = new Set();
+  for (const name of priceColumnNames(sheets, ctx)) {
+    const key = ctx.resolvePriceKey(name);
+    if (key !== null) {
+      const t = ctx.orderType(key);
+      if (t && t.adopted && !t.active && !warned.has(key)) { warned.add(key); log(`⚠️ التطبيق ${t.name_ar || t.key} مسجّل لكنه معطّل في حسابك — فعّله من إعدادات فليفرز ليظهر سعره`); }
+      continue;
+    }
+    if (!ctx.createOrderTypes) continue;
+    const known = ctx.catalogType(name);
+    const planned = known ? known.key : `NEW:${keynorm(name)}`;
+    if (!plan.has(planned)) plan.set(planned, { key: planned, name, known, label: known ? known.name_ar || known.name_en || known.key : name });
+  }
+  ctx.pendingOrderTypes = [...plan.values()].map((t) => ({ key: t.key, name_en: t.name, name_ar: t.known?.name_ar ?? null, name: t.known?.name_en ?? null }));
+  ctx.reindex();
+  return [...plan.values()];
+}
+
+// Registers the planned apps, then points every built price at the real key (or drops it if that app failed).
+// realKey: planned key -> real key; null = failed; undefined = created but the API didn't say its key.
+async function createOrderTypes(client, ctx, plan, built, log) {
+  const realKey = {};
+  for (const t of plan) {
+    try {
+      const key = await client.createOrderType(t.known
+        ? { type_key: t.key, name_en: t.known.name_en || t.key, name_ar: t.known.name_ar }
+        : { name_en: t.name, name_ar: t.name });
+      realKey[t.key] = t.known ? t.key : key || undefined;
+      log(t.known ? `🆕 تم تفعيل التطبيق ${t.label} (${t.key}) في حسابك` : `🆕 تم إنشاء نوع الطلب: ${t.name}`);
+    } catch (e) {
+      realKey[t.key] = null;
+      log(`❌ فشل ${t.known ? "تفعيل التطبيق" : "إنشاء نوع الطلب"} ${t.label}: ${e.message} — لن تُرفع أسعاره`);
+    }
+  }
+  try {
+    ctx.orderTypes = await client.orderTypes();
+    for (const t of plan) {
+      if (t.known || realKey[t.key] === null || realKey[t.key]) continue;
+      const k = keynorm(t.name);
+      realKey[t.key] = ctx.orderTypes.find((o) => [o.name_en, o.name_ar].some((v) => v && keynorm(v) === k))?.key || null;
+      if (!realKey[t.key]) log(`❌ أُنشئ نوع الطلب ${t.name} لكن تعذّر معرفة مفتاحه — لن تُرفع أسعاره`);
+    }
+  } catch (e) { log(`⚠️ تعذّر تحديث قائمة أنواع الطلب: ${e.message}`); }
+  for (const b of built) {
+    for (const o of b.body.options || []) {
+      if (!o.prices?.length) continue;
+      o.prices = o.prices
+        .filter((p) => !(p.priceable_id in realKey) || realKey[p.priceable_id])
+        .map((p) => (p.priceable_id in realKey ? { ...p, priceable_id: realKey[p.priceable_id] } : p));
+    }
+  }
 }
 
 export async function referenceSheets(client, ctx) {
@@ -47,6 +116,7 @@ export async function referenceSheets(client, ctx) {
 }
 
 export async function upload(client, ctx, sheets, { mode = "upsert", dryRun = true, allowPartial = false, log, progress = () => {} }) {
+  const typePlan = planOrderTypes(sheets, ctx, log);
   const { built, issues } = buildPayloads(sheets, ctx);
   const errors = issues.filter((i) => i.level === "ERROR");
   for (const i of issues) log(`${i.level === "ERROR" ? "❌" : "⚠️"} [${i.sheet}${i.row ? ":" + i.row : ""}] ${i.product_code || ""} ${i.message}`);
@@ -79,6 +149,14 @@ export async function upload(client, ctx, sheets, { mode = "upsert", dryRun = tr
       ctx.reindex();
     }
   }
+
+  // register missing apps (live only) and point their prices at the real keys
+  if (typePlan.length && !blocked) {
+    if (dryRun) typePlan.forEach((t) => log(t.known ? `🆕 سيتم تفعيل التطبيق ${t.label} (${t.key}) في حسابك` : `🆕 سيتم إنشاء نوع طلب جديد في حسابك: ${t.name}`));
+    else await createOrderTypes(client, ctx, typePlan, built, log);
+  }
+  ctx.pendingOrderTypes = [];
+  ctx.reindex();
 
   const existing = new Map();
   if (mode !== "always_create") {

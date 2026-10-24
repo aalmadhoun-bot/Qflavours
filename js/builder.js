@@ -10,6 +10,12 @@ const TYPE_ALIASES = {
 const YES = new Set(["yes", "y", "true", "1", "نعم", "ن", "صح", "x", "✓"]);
 const NO = new Set(["no", "n", "false", "0", "لا", "خطا"]);
 const NON_PRICE_COLS = new Set(["product_code", "modifier_name_en", "_row"]);
+// Regular columns of Products / Modifiers. Any other column named after an app holds that row's price in that app.
+export const PRODUCT_COLS = new Set(["product_code", "name_en", "name_ar", "category", "category_ar", "category_en", "price", "cost",
+  "calorie", "barcode", "is_tax_included", "description_en", "description_ar", "preparation_time", "stock", "branch_id", "_row"]);
+export const MODIFIER_COLS = new Set(["product_code", "modifier_name_en", "modifier_name_ar", "type", "price", "cost", "calorie",
+  "barcode", "is_tax_included", "weight_amount", "weight_unit", "_row"]);
+const extraCols = (r, regular) => Object.entries(r).filter(([col, val]) => !regular.has(col) && !isNil(val));
 
 const isNil = (v) => v === null || v === undefined;
 
@@ -57,9 +63,10 @@ const intLike = (v) => (isIntLike(v) ? parseInt(parseFloat(v), 10) : v);
 
 export class Context {
   constructor({ marketId = null, defaultBranchId = null, categories = [], ingredients = [],
-    orderTypes = [], createCategories = true } = {}) {
-    Object.assign(this, { marketId, defaultBranchId, categories, ingredients, orderTypes, createCategories });
+    orderTypes = [], orderTypeCatalog = null, createCategories = true, createOrderTypes = true } = {}) {
+    Object.assign(this, { marketId, defaultBranchId, categories, ingredients, orderTypes, orderTypeCatalog, createCategories, createOrderTypes });
     this.pendingCategories = {};
+    this.pendingOrderTypes = [];  // apps named in the file that this run will register (see uploader.planOrderTypes)
     this.reindex();
   }
   reindex() {
@@ -74,14 +81,23 @@ export class Context {
       if (!this._ing.has(norm(i.id))) this._ing.set(norm(i.id), i.id);
     }
     this._price = new Map();
-    for (const o of this.orderTypes) {
+    for (const o of [...this.orderTypes, ...this.pendingOrderTypes]) {
       if (!o.key) continue;
       for (const v of [o.key, o.name_en, o.name_ar, o.name]) if (v && !this._price.has(keynorm(v))) this._price.set(keynorm(v), o.key);
     }
   }
   resolvePriceKey(col) {
-    if (this._price.size === 0) return String(col).trim().toUpperCase(); // nothing loaded -> trust header
+    if (this._price.size === 0 && !this.orderTypeCatalog) return String(col).trim().toUpperCase(); // nothing loaded -> trust header
     return this._price.get(keynorm(col)) ?? null;
+  }
+  // Like resolvePriceKey but never trusts an unknown header: used for the extra columns of Products / Modifiers,
+  // where a stray column (notes, …) must not turn into an app.
+  knownPriceKey(col) { return this._price.get(keynorm(col)) ?? null; }
+  orderType(key) { return this.orderTypes.find((o) => o.key === key) || null; }
+  // A type Flavours knows (registered here or not), matched by key or name like the price columns are.
+  catalogType(name) {
+    const k = keynorm(name);
+    return (this.orderTypeCatalog || []).find((o) => [o.key, o.name_en, o.name_ar].some((v) => v && keynorm(v) === k)) || null;
   }
   addIngredientMap(rows) {
     for (const r of rows) if (!isNil(r.ingredient_name) && !isNil(r.ingredient_id)) this._ing.set(norm(r.ingredient_name), intLike(r.ingredient_id));
@@ -93,6 +109,25 @@ export class Context {
     if (!isNil(hit)) return intLike(hit);
     return isIntLike(v) ? parseInt(parseFloat(v), 10) : null;
   }
+}
+
+// Names the file uses as apps/order types: Delivery_Prices columns that hold a price, Price_Rules keys
+// that carry a rule (a key with every rule cell empty changes nothing, so it does not count), and extra
+// Products / Modifiers columns that name a type Flavours knows (a new custom app needs a Delivery_Prices column).
+export function priceColumnNames(sheets, ctx) {
+  const names = new Set();
+  for (const r of sheets.Delivery_Prices || []) {
+    for (const [col, val] of Object.entries(r)) if (!NON_PRICE_COLS.has(col) && !isNil(val)) names.add(String(col).trim());
+  }
+  for (const [sheet, regular] of [["Products", PRODUCT_COLS], ["Modifiers", MODIFIER_COLS]]) {
+    for (const r of sheets[sheet] || []) {
+      for (const [col] of extraCols(r, regular)) if (ctx.knownPriceKey(col) !== null || ctx.catalogType(col)) names.add(String(col).trim());
+    }
+  }
+  for (const r of sheets.Price_Rules || []) {
+    if (!isNil(r.payment_method_key) && [r.markup_percent, r.fixed_add, r.round_to].some((v) => !isNil(v))) names.add(String(r.payment_method_key).trim());
+  }
+  return [...names];
 }
 
 export function buildPayloads(sheets, ctx) {
@@ -162,6 +197,38 @@ export function buildPayloads(sheets, ctx) {
       if (!m.has(mkey)) m.set(mkey, {});
       m.get(mkey)[key] = price;
     }
+  }
+
+  // app prices written next to the price: Products row = the whole product ('*'), Modifiers row = that option.
+  // They win over a Delivery_Prices value for the same option and app (with a warning if the two differ).
+  const inline = (sheet, r, code, mkey, regular) => {
+    for (const [col, val] of extraCols(r, regular)) {
+      const key = ctx.knownPriceKey(col);
+      if (key === null) {
+        let num = null;
+        try { num = toNum(val); } catch { /* text column: not a price */ }
+        if (num !== null) warn(sheet, r._row, code, `العمود '${col}' ليس تطبيقاً/نوع طلب في حسابك ولا يعرفه فليفرز — تم تجاهله (لتطبيق جديد أضف عموداً باسمه في Delivery_Prices)`);
+        continue;
+      }
+      let price;
+      try { price = toNum(val); } catch (e) { err(sheet, r._row, code, `${key}: ${e.message}`); continue; }
+      if (price === null) continue;
+      if (price < 0) { err(sheet, r._row, code, `${key}: السعر سالب`); continue; }
+      if (!dprices.has(code)) dprices.set(code, new Map());
+      const m = dprices.get(code);
+      if (!m.has(mkey)) m.set(mkey, {});
+      const prev = m.get(mkey)[key];
+      if (prev !== undefined && prev !== price) warn(sheet, r._row, code, `${key}: السعر ${price} يختلف عن ${prev} في Delivery_Prices — اعتُمد ${price}`);
+      m.get(mkey)[key] = price;
+    }
+  };
+  for (const r of S("Products")) {
+    const code = codeOf(r);
+    if (products.has(code)) inline("Products", r, code, "*", PRODUCT_COLS);
+  }
+  for (const r of S("Modifiers")) {
+    const code = codeOf(r);
+    if (products.has(code) && !isNil(r.modifier_name_en)) inline("Modifiers", r, code, norm(r.modifier_name_en), MODIFIER_COLS);
   }
 
   // recipes: code -> modifier(norm or '*') -> [{ingredient_id, qty}]
@@ -255,6 +322,11 @@ export function buildPayloads(sheets, ctx) {
           finals[key] = roundTo(price * (1 + rule.pct / 100) + rule.add, rule.step);
         }
         Object.assign(finals, explicit);
+        // Flavours stores an app price as an amount ADDED to the base price and rejects a negative one (HTTP 422).
+        const what = m._default ? "المنتج" : `الخيار '${m.modifier_name_en}'`;
+        for (const [key, v] of Object.entries(finals)) {
+          if (v < price) err(sheet, m._row, code, `سعر ${what} في ${key} (${v}) أقل من سعره الأساسي (${price}) — فليفرز لا يقبل سعر تطبيق أقل من السعر الأساسي. اكتب سعراً مساوياً أو أعلى، أو اترك الخانة فارغة`);
+        }
       }
 
       let barcode = null;

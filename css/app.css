@@ -88,3 +88,23 @@ dialog .grid{grid-template-columns:1fr}
 }
 @media (max-width:600px){.card{padding:16px}}
 
+
+/* Step wizard on the upload page: one step per screen, progress bar on top */
+.stepper{list-style:none;margin:0;padding:0;display:flex;gap:8px;counter-reset:none}
+.stepper li{flex:1;position:relative}
+.stepper li:not(:last-child)::after{content:"";position:absolute;top:22px;inset-inline-start:calc(50% + 24px);inset-inline-end:calc(-50% + 24px);height:2px;background:var(--line)}
+.stepper li.done:not(:last-child)::after{background:var(--ok)}
+.stepper button{all:unset;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;text-align:center;padding:4px 0}
+.stepper .num{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:600;background:#fff;border:2px solid var(--line);color:var(--mute);position:relative;z-index:1;transition:all .2s}
+.stepper .lbl{font-size:13px;color:var(--mute)}
+.stepper li.active .num{background:var(--pri);border-color:var(--pri);color:#fff;box-shadow:0 0 0 4px #e8eef6}
+.stepper li.active .lbl{color:var(--ink);font-weight:600}
+.stepper li.done .num{background:var(--ok);border-color:var(--ok);color:#fff}
+.stepper li.done .num::before{content:"✓";position:absolute;inset:0;display:grid;place-items:center;background:var(--ok);border-radius:50%}
+.stepper li.locked button{cursor:not-allowed;opacity:.55}
+.stepper button:focus-visible .num{outline:2px solid var(--pri);outline-offset:2px}
+.step-nav{justify-content:space-between;border-top:1px solid var(--line);padding-top:14px;margin-top:18px}
+.step-nav button:last-child{margin-inline-start:auto}
+[data-pane]{animation:paneIn .2s ease-out}
+@keyframes paneIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (max-width:600px){.stepper .lbl{font-size:11px}.stepper li:not(:last-child)::after{top:20px}}
