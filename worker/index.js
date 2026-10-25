@@ -8,8 +8,9 @@ import * as logout from "./api/logout.js";
 import * as me from "./api/me.js";
 import * as users from "./api/users.js";
 import * as flavours from "./api/flavours.js";
+import * as activity from "./api/activity.js";
 
-const ROUTES = { "/api/login": login, "/api/logout": logout, "/api/me": me, "/api/users": users };
+const ROUTES = { "/api/login": login, "/api/logout": logout, "/api/me": me, "/api/users": users, "/api/activity": activity };
 const route = (path) => ROUTES[path] || (path.startsWith(flavours.PREFIX) ? flavours : null);
 
 export default {

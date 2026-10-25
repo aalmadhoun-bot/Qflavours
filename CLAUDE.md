@@ -38,6 +38,12 @@
 - الـ handlers بشكل Pages Functions (`onRequestGet/Post/Delete({ request, env, data, next })`) ويوجّهها `worker/index.js`؛ مسار `/api` جديد يُضاف إلى `ROUTES` هناك. تحقق الصلاحية داخل كل handler.
 - نسخة GitHub Pages بلا Worker، فهي غير محمية.
 
+## تقرير الاستخدام
+- سجل النشاط في نفس مخزن KV (`USERS`) بمفاتيح `act:<ISO time>:<random>`، والحدث كله في الـ metadata (≤ 1024 بايت) حتى تكفي القائمة بدون قراءة لكل حدث، وينتهي تلقائياً بعد 180 يوماً (`RETENTION_DAYS` في `worker/activity.js`).
+- `login` يسجله الخادم في `worker/api/login.js`؛ باقي الأحداث ترسلها الصفحات بـ `track()` في `js/nav.js` (لا تنتظر ولا تُظهر خطأ). الأنواع المسموحة وحقولها الرقمية في `ACTIONS`؛ البريد من الجلسة دائماً.
+- `GET /api/activity?from&to` للمديرين فقط، وصفحة `activity.html`/`js/activity.js` تجمعها حسب المستخدم (مع من لا نشاط له) وتصدّر Excel.
+- المعاينات تستخدم نفس مخزن KV، فأي نشاط على رابط معاينة يظهر في التقرير.
+
 ## Q-Flavours API (مستخرج من تطبيق qflavours.qoyod.com — غير موثق علناً)
 - القاعدة: `https://qflavours-api.qoyod.com/pos/api/v2`
 - المصادقة من المتصفح: `Authorization: Bearer <token>` فقط — هيدر `API-TOKEN` يمنعه CORS من مواقع أخرى (تحقق 2026-10-22: `Access-Control-Allow-Headers` لا يشمله).
