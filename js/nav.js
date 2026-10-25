@@ -8,6 +8,7 @@ const LINKS = [
   ["upload", "/#step-3", "⬆️", ["3. الرفع", "3. Upload"]],
   ["upload", "/#log-card", "📜", ["السجل", "Log"]],
   ["delete", "/delete", "🗑️", ["حذف المنتجات", "Delete products"], true],
+  ["activity", "/activity", "📊", ["تقرير الاستخدام", "Usage report"], true],
   ["users", "/users", "👥", ["المستخدمون", "Users"], true],
 ];
 
@@ -27,6 +28,15 @@ export async function api(path, { method = "GET", body } = {}) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(errorText(data, `HTTP ${res.status}`));
   return data;
+}
+
+// Reports an action to the usage log (admin "Usage report", worker/activity.js). Fire-and-forget:
+// it never delays the page or surfaces an error.
+export function track(action, data = {}) {
+  fetch("/api/activity", {
+    method: "POST", credentials: "same-origin", keepalive: true,
+    headers: { "content-type": "application/json" }, body: JSON.stringify({ action, ...data }),
+  }).catch(() => {});
 }
 
 // In-page confirmation dialog. Native confirm() is silently refused (returns false, shows nothing)

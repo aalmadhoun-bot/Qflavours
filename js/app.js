@@ -1,11 +1,11 @@
 import { DEFAULT_BASE_URL } from "./api.js";
 import { readWorkbook, saveXlsx as download, stamp, writeWorkbook } from "./excel.js";
 import { MODES, connect, loadContext, referenceSheets, upload } from "./uploader.js";
-import { askConfirm, mountNav } from "./nav.js";
+import { askConfirm, mountNav, track } from "./nav.js";
 import { accountTemplate } from "./template.js";
 import { L } from "./i18n.js";
 
-export const VERSION = "2.7.0";
+export const VERSION = "2.8.0";
 const $ = (id) => document.getElementById(id);
 // conn: "idle" | "connecting" | "ok" | "error" (with connError); summary: last run, so both re-render in the other language
 const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null, step: 1,
@@ -135,6 +135,7 @@ $("btnConnect").onclick = () => busy(async () => {
     Object.assign(state, { client, ctx, conn: "ok" });
     renderConn();
     log(L("✅ تم الاتصال وتحميل البيانات المرجعية", "✅ Connected and reference data loaded"));
+    track("connect", { market: ctx.marketId, page: "upload" });
     setTimeout(() => { if (state.step === 1 && state.ctx === ctx) goStep(2); }, 900);  // let the success show, then move on
   } catch (e) {
     Object.assign(state, { ctx: null, conn: "error", connError: e.message });
@@ -148,6 +149,7 @@ $("btnRef").onclick = () => busy(async () => {
     log(L("📤 جارٍ تصدير البيانات المرجعية…", "📤 Exporting reference data…"));
     download(await writeWorkbook(await referenceSheets(state.client, state.ctx)), `flavours_reference_${stamp()}.xlsx`);
     log(L("✅ تم تصدير البيانات المرجعية", "✅ Reference data exported"));
+    track("reference", { market: state.ctx.marketId });
   } catch (e) { log("❌ " + e.message); alert(e.message); }
 });
 
@@ -155,6 +157,7 @@ $("btnTpl").onclick = () => busy(async () => {
   try {
     log(L("📄 جارٍ تجهيز قالب خاص بحسابك…", "📄 Preparing a template for your account…"));
     download(await accountTemplate(state.ctx), `flavours_template_market-${state.ctx.marketId ?? "x"}_${stamp()}.xlsx`);
+    track("template", { market: state.ctx.marketId });
     const cols = state.ctx.orderTypes.filter((t) => t.active !== false).map((t) => t.key);
     log(L(`✅ تم تحميل القالب — أعمدة التطبيقات: ${cols.join("، ") || "لا يوجد"}`, `✅ Template downloaded — app columns: ${cols.join(", ") || "none"}`));
   } catch (e) { log("❌ " + e.message); alert(e.message); }
@@ -197,6 +200,7 @@ async function run(live) {
       $("mErr").textContent = m.errors; $("mWarn").textContent = m.warnings;
       state.summary = m;
       renderResult();
+      track(live ? "upload" : "dry_run", { market: state.ctx.marketId, ready: m.ready, ok: m.ok, failed: m.failed, errors: m.errors, warnings: m.warnings });
       state.report = { results: out.results, issues: out.issues };
       $("result").classList.remove("hidden");
     } catch (e) { log("❌ " + e.message); alert(e.message); }
@@ -208,6 +212,7 @@ $("btnLive").onclick = () => run(true);
 $("btnReport").onclick = async () => {
   if (!state.report) return;
   download(await writeWorkbook({ Results: state.report.results, Issues: state.report.issues }), `flavours_report_${stamp()}.xlsx`);
+  track("report", { market: state.ctx?.marketId });
 };
 
 init();

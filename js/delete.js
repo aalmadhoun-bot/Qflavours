@@ -3,7 +3,7 @@
 import { Client } from "./api.js";
 import { saveXlsx, stamp, writeWorkbook } from "./excel.js";
 import { L } from "./i18n.js";
-import { askConfirm, mountNav } from "./nav.js";
+import { askConfirm, mountNav, track } from "./nav.js";
 import { connect } from "./uploader.js";
 
 const $ = (id) => document.getElementById(id);
@@ -116,6 +116,7 @@ $("btnConnect").onclick = () => busy(async () => {
     if (!state.marketId) log(L("⚠️ لم يتم العثور على market_id — أدخله يدوياً من الإعدادات المتقدمة", "⚠️ market_id not found — enter it in the advanced settings"));
     await loadProducts();
     state.conn = "ok";
+    track("connect", { market: state.marketId, page: "delete" });
   } catch (e) {
     Object.assign(state, { client: null, conn: "error", connError: e.message });
     log("❌ " + e.message);
@@ -134,6 +135,7 @@ $("btnBackup").onclick = () => busy(async () => {
   }));
   saveXlsx(await writeWorkbook({ Products: rows }), `flavours_products_backup_${stamp()}.xlsx`);
   log(L(`💾 تم تحميل نسخة احتياطية لـ ${rows.length} منتج`, `💾 Backup downloaded for ${rows.length} products`));
+  track("backup", { market: state.marketId, products: rows.length });
 });
 
 $("search").oninput = renderRows;
@@ -195,6 +197,7 @@ $("btnDelete").onclick = async () => {
     show();
     state.report = report;
     state.outcome = { done, failed, total: list.length, stopped };
+    track("delete", { market: state.marketId, total: list.length, deleted: done, failed });
     renderOutcome();
     log(L(`🏁 انتهى: حُذف ${done}، فشل ${failed}${stopped ? "، وأُوقف قبل الباقي" : ""}`, `🏁 Done: ${done} deleted, ${failed} failed${stopped ? ", stopped before the rest" : ""}`));
     $("prog").classList.add("hidden");
@@ -205,7 +208,9 @@ $("btnDelete").onclick = async () => {
 };
 
 $("btnReport").onclick = async () => {
-  if (state.report) saveXlsx(await writeWorkbook({ Deleted: state.report }), `flavours_delete_report_${stamp()}.xlsx`);
+  if (!state.report) return;
+  saveXlsx(await writeWorkbook({ Deleted: state.report }), `flavours_delete_report_${stamp()}.xlsx`);
+  track("delete_report", { market: state.marketId });
 };
 
 addEventListener("langchange", () => { renderConn(); renderOutcome(); if (state.products.length) renderRows(); else refresh(); });

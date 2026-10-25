@@ -135,3 +135,13 @@ dialog .grid{grid-template-columns:1fr}
 [data-pane]{animation:paneIn .2s ease-out}
 @keyframes paneIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
 @media (max-width:600px){.stepper .lbl{font-size:11px}.stepper li:not(:last-child)::after{top:20px}}
+
+/* Usage report */
+input[type=date]{width:100%;height:48px;padding:0 14px;border:1px solid var(--field-line);border-radius:var(--r);font:inherit;background:#fff;color:var(--ink)}
+.num-table td,.num-table th{white-space:nowrap}
+.num-table td.zero{color:var(--mute)}
+tr.clickable{cursor:pointer}
+tr.clickable:hover td{background:#f8f8fa}
+tr.picked td{background:var(--pri-50)}
+main>*,#page>*{min-width:0}  /* wide tables scroll inside their card instead of widening the page */
+.num-table .bad-n{color:var(--bad);font-size:12px;margin-inline-start:6px}
