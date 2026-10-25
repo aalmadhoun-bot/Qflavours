@@ -1,3 +1,5 @@
+import { L } from "./i18n.js";
+
 // Read the filled template and write report / reference workbooks (uses ExcelJS, loaded globally).
 const SHEETS = ["Products", "Modifiers", "Recipes", "Delivery_Prices", "Price_Rules", "Ingredients_Map"];
 
@@ -53,13 +55,13 @@ export async function writeWorkbook(sheets) {
   const wb = new (X().Workbook)();
   for (const [name, rows] of Object.entries(sheets)) {
     const ws = wb.addWorksheet(name.slice(0, 31));
-    if (!rows.length) { ws.addRow(["(لا توجد بيانات)"]); continue; }
+    if (!rows.length) { ws.addRow([L("(لا توجد بيانات)", "(no data)")]); continue; }
     const keys = [];
     rows.forEach((r) => Object.keys(r).forEach((k) => { if (!keys.includes(k)) keys.push(k); }));
     ws.columns = keys.map((k) => ({ header: k, key: k, width: 24 }));
     const head = ws.getRow(1);
     head.font = { bold: true, color: { argb: "FFFFFFFF" } };
-    head.eachCell((c) => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F4E78" } }; });
+    head.eachCell((c) => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2900EE" } }; });
     for (const r of rows) {
       const flat = {};
       for (const k of keys) { const v = r[k]; flat[k] = v !== null && typeof v === "object" ? JSON.stringify(v).slice(0, 32000) : v; }

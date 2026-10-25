@@ -1,5 +1,6 @@
 // Validate workbook rows and turn them into Q-Flavours product payloads.
 // Port of flavours/builder.py (desktop tool) — keep both in sync.
+import { L } from "./i18n.js";
 
 export const MODIFIER_TYPES = ["OPTION", "ADDITIONAL", "OPTION_VARIABLE", "ADDITIONAL_VARIABLE"];
 const TYPE_ALIASES = {
@@ -42,7 +43,7 @@ export function toNum(v) {
   const s = String(v).replace(/,/g, "").replace(/٫/g, ".").trim()
     .replace(/[٠-٩]/g, (d) => String("٠١٢٣٤٥٦٧٨٩".indexOf(d)));
   if (s === "" || !/^[-+]?(\d+\.?\d*|\.\d+)(e[-+]?\d+)?$/i.test(s)) {
-    throw new Error(`قيمة رقمية غير صحيحة: '${v}'`);
+    throw new Error(L(`قيمة رقمية غير صحيحة: '${v}'`, `Invalid number: '${v}'`));
   }
   return parseFloat(s);
 }
@@ -143,23 +144,23 @@ export function buildPayloads(sheets, ctx) {
   const products = new Map();
   for (const r of S("Products")) {
     const code = codeOf(r);
-    if (!code) { err("Products", r._row, null, "product_code فارغ"); continue; }
-    if (products.has(code)) { err("Products", r._row, code, "product_code مكرر"); continue; }
-    if (!r.name_en) err("Products", r._row, code, "name_en إلزامي");
+    if (!code) { err("Products", r._row, null, L("product_code فارغ", "product_code is empty")); continue; }
+    if (products.has(code)) { err("Products", r._row, code, L("product_code مكرر", "Duplicate product_code")); continue; }
+    if (!r.name_en) err("Products", r._row, code, L("name_en إلزامي", "name_en is required"));
     products.set(code, r);
   }
-  if (products.size === 0) err("Products", null, null, "لا توجد منتجات في ورقة Products");
+  if (products.size === 0) err("Products", null, null, L("لا توجد منتجات في ورقة Products", "No products in the Products sheet"));
 
   // modifiers
   const mods = new Map([...products.keys()].map((c) => [c, []]));
   for (const r of S("Modifiers")) {
     const code = codeOf(r);
-    if (!products.has(code)) { err("Modifiers", r._row, code || null, "product_code غير موجود في ورقة Products"); continue; }
+    if (!products.has(code)) { err("Modifiers", r._row, code || null, L("product_code غير موجود في ورقة Products", "product_code not found in the Products sheet")); continue; }
     const raw = r.type;
     let t = raw ? String(raw).trim().toUpperCase() : "";
     if (!MODIFIER_TYPES.includes(t)) t = TYPE_ALIASES[norm(raw)] || "";
-    if (!t) { err("Modifiers", r._row, code, `type غير صحيح: '${raw}' (المسموح: ${MODIFIER_TYPES.join(", ")})`); continue; }
-    if (!r.modifier_name_en && !r.modifier_name_ar) { err("Modifiers", r._row, code, "اسم الخيار فارغ"); continue; }
+    if (!t) { err("Modifiers", r._row, code, L(`type غير صحيح: '${raw}' (المسموح: ${MODIFIER_TYPES.join(", ")})`, `Invalid type: '${raw}' (allowed: ${MODIFIER_TYPES.join(", ")})`)); continue; }
+    if (!r.modifier_name_en && !r.modifier_name_ar) { err("Modifiers", r._row, code, L("اسم الخيار فارغ", "Option name is empty")); continue; }
     mods.get(code).push({ ...r, type: t });
   }
 
@@ -169,7 +170,7 @@ export function buildPayloads(sheets, ctx) {
     const raw = r.payment_method_key;
     if (!raw) continue;
     const key = ctx.resolvePriceKey(raw);
-    if (key === null) { warn("Price_Rules", r._row, null, `'${raw}' ليس نوع طلب/تطبيق موجود في حسابك — تم تجاهله`); continue; }
+    if (key === null) { warn("Price_Rules", r._row, null, L(`'${raw}' ليس نوع طلب/تطبيق موجود في حسابك — تم تجاهله`, `'${raw}' is not an order type/app in your account — ignored`)); continue; }
     try {
       rules.set(key, {
         pct: toNum(r.markup_percent) || 0, add: toNum(r.fixed_add) || 0,
@@ -182,16 +183,16 @@ export function buildPayloads(sheets, ctx) {
   const dprices = new Map();
   for (const r of S("Delivery_Prices")) {
     const code = codeOf(r);
-    if (!products.has(code)) { err("Delivery_Prices", r._row, code || null, "product_code غير موجود في ورقة Products"); continue; }
+    if (!products.has(code)) { err("Delivery_Prices", r._row, code || null, L("product_code غير موجود في ورقة Products", "product_code not found in the Products sheet")); continue; }
     const mkey = norm(r.modifier_name_en) || "*";
     for (const [col, val] of Object.entries(r)) {
       if (NON_PRICE_COLS.has(col) || isNil(val)) continue;
       const key = ctx.resolvePriceKey(col);
-      if (key === null) { warn("Delivery_Prices", r._row, code, `العمود '${col}' ليس نوع طلب/تطبيق موجود في حسابك — تم تجاهله`); continue; }
+      if (key === null) { warn("Delivery_Prices", r._row, code, L(`العمود '${col}' ليس نوع طلب/تطبيق موجود في حسابك — تم تجاهله`, `Column '${col}' is not an order type/app in your account — ignored`)); continue; }
       let price;
       try { price = toNum(val); } catch (e) { err("Delivery_Prices", r._row, code, `${key}: ${e.message}`); continue; }
       if (price === null) continue;
-      if (price < 0) { err("Delivery_Prices", r._row, code, `${key}: السعر سالب`); continue; }
+      if (price < 0) { err("Delivery_Prices", r._row, code, `${key}: ${L("السعر سالب", "negative price")}`); continue; }
       if (!dprices.has(code)) dprices.set(code, new Map());
       const m = dprices.get(code);
       if (!m.has(mkey)) m.set(mkey, {});
@@ -207,18 +208,18 @@ export function buildPayloads(sheets, ctx) {
       if (key === null) {
         let num = null;
         try { num = toNum(val); } catch { /* text column: not a price */ }
-        if (num !== null) warn(sheet, r._row, code, `العمود '${col}' ليس تطبيقاً/نوع طلب في حسابك ولا يعرفه فليفرز — تم تجاهله (لتطبيق جديد أضف عموداً باسمه في Delivery_Prices)`);
+        if (num !== null) warn(sheet, r._row, code, L(`العمود '${col}' ليس تطبيقاً/نوع طلب في حسابك ولا يعرفه فليفرز — تم تجاهله (لتطبيق جديد أضف عموداً باسمه في Delivery_Prices)`, `Column '${col}' is not an app/order type in your account and Flavours doesn't know it — ignored (for a new app, add a column with its name in Delivery_Prices)`));
         continue;
       }
       let price;
       try { price = toNum(val); } catch (e) { err(sheet, r._row, code, `${key}: ${e.message}`); continue; }
       if (price === null) continue;
-      if (price < 0) { err(sheet, r._row, code, `${key}: السعر سالب`); continue; }
+      if (price < 0) { err(sheet, r._row, code, `${key}: ${L("السعر سالب", "negative price")}`); continue; }
       if (!dprices.has(code)) dprices.set(code, new Map());
       const m = dprices.get(code);
       if (!m.has(mkey)) m.set(mkey, {});
       const prev = m.get(mkey)[key];
-      if (prev !== undefined && prev !== price) warn(sheet, r._row, code, `${key}: السعر ${price} يختلف عن ${prev} في Delivery_Prices — اعتُمد ${price}`);
+      if (prev !== undefined && prev !== price) warn(sheet, r._row, code, L(`${key}: السعر ${price} يختلف عن ${prev} في Delivery_Prices — اعتُمد ${price}`, `${key}: price ${price} differs from ${prev} in Delivery_Prices — ${price} was used`));
       m.get(mkey)[key] = price;
     }
   };
@@ -235,12 +236,12 @@ export function buildPayloads(sheets, ctx) {
   const recipes = new Map();
   for (const r of S("Recipes")) {
     const code = codeOf(r);
-    if (!products.has(code)) { err("Recipes", r._row, code || null, "product_code غير موجود في ورقة Products"); continue; }
+    if (!products.has(code)) { err("Recipes", r._row, code || null, L("product_code غير موجود في ورقة Products", "product_code not found in the Products sheet")); continue; }
     const iid = ctx.ingredientId(r.ingredient);
-    if (iid === null) { err("Recipes", r._row, code, `المادة الخام غير معروفة: '${r.ingredient}' — أضفها في Ingredients_Map أو استخدم رقمها`); continue; }
+    if (iid === null) { err("Recipes", r._row, code, L(`المادة الخام غير معروفة: '${r.ingredient}' — أضفها في Ingredients_Map أو استخدم رقمها`, `Unknown ingredient: '${r.ingredient}' — add it to Ingredients_Map or use its ID`)); continue; }
     let qty;
     try { qty = toNum(r.qty); } catch (e) { err("Recipes", r._row, code, e.message); continue; }
-    if (!qty || qty <= 0) { err("Recipes", r._row, code, "الكمية يجب أن تكون أكبر من صفر"); continue; }
+    if (!qty || qty <= 0) { err("Recipes", r._row, code, L("الكمية يجب أن تكون أكبر من صفر", "Quantity must be greater than zero")); continue; }
     const mkey = norm(r.modifier_name_en) || "*";
     if (!recipes.has(code)) recipes.set(code, new Map());
     const m = recipes.get(code);
@@ -254,7 +255,7 @@ export function buildPayloads(sheets, ctx) {
   for (const [code, p] of products) {
     const row = p._row;
     let catId = ctx.categoryId(p.category);
-    if (isNil(p.category)) err("Products", row, code, "category إلزامي");
+    if (isNil(p.category)) err("Products", row, code, L("category إلزامي", "category is required"));
     else if (catId === null && ctx.createCategories) {
       const cname = String(p.category).trim();
       const key = norm(cname);
@@ -264,11 +265,11 @@ export function buildPayloads(sheets, ctx) {
           name_en: hasAr ? (p.category_en || cname) : cname,
           name_ar: p.category_ar || cname,
         };
-        warn("Products", row, code, `التصنيف '${cname}' غير موجود — سيتم إنشاؤه تلقائياً`);
+        warn("Products", row, code, L(`التصنيف '${cname}' غير موجود — سيتم إنشاؤه تلقائياً`, `Category '${cname}' doesn't exist — it will be created automatically`));
       }
       catId = { __new_category__: key };
     } else if (catId === null) {
-      err("Products", row, code, `التصنيف غير موجود في فليفرز: '${p.category}' — أنشئه أولاً من البرنامج`);
+      err("Products", row, code, L(`التصنيف غير موجود في فليفرز: '${p.category}' — أنشئه أولاً من البرنامج`, `Category not found in Flavours: '${p.category}' — create it there first`));
     }
     const taxDefault = toBool(p.is_tax_included, true);
 
@@ -282,14 +283,14 @@ export function buildPayloads(sheets, ctx) {
       }];
     }
     if (!modRows.some((m) => m.type === "OPTION" || m.type === "OPTION_VARIABLE")) {
-      err("Modifiers", row, code, "يجب أن يكون للمنتج خيار واحد على الأقل من نوع OPTION");
+      err("Modifiers", row, code, L("يجب أن يكون للمنتج خيار واحد على الأقل من نوع OPTION", "The product needs at least one OPTION"));
     }
 
     const known = new Set(modRows.map((m) => norm(m.modifier_name_en)));
     if (modRows[0]?._default) known.add("*");
     for (const src of [recipes.get(code), dprices.get(code)]) {
       if (!src) continue;
-      for (const mk of src.keys()) if (mk !== "*" && !known.has(mk)) err("Recipes/Delivery_Prices", null, code, `اسم خيار غير موجود في Modifiers: '${mk}'`);
+      for (const mk of src.keys()) if (mk !== "*" && !known.has(mk)) err("Recipes/Delivery_Prices", null, code, L(`اسم خيار غير موجود في Modifiers: '${mk}'`, `Option name not found in Modifiers: '${mk}'`));
     }
 
     const options = [];
@@ -299,8 +300,8 @@ export function buildPayloads(sheets, ctx) {
       try { price = toNum(m.price); cost = toNum(m.cost); cal = toNum(m.calorie); wAmt = toNum(m.weight_amount); }
       catch (e) { err(sheet, m._row, code, e.message); continue; }
       if ((price === null || price <= 0) && (m.type === "OPTION" || m.type === "ADDITIONAL")) {
-        const what = m._default ? "المنتج" : `الخيار '${m.modifier_name_en}'`;
-        err(sheet, m._row, code, `${what} بدون سعر أو سعره 0 — فليفرز لا يقبل سعراً أقل من أو يساوي 0. أدخل سعراً أكبر من 0`);
+        const what = m._default ? L("المنتج", "the product") : L(`الخيار '${m.modifier_name_en}'`, `option '${m.modifier_name_en}'`);
+        err(sheet, m._row, code, L(`${what} بدون سعر أو سعره 0 — فليفرز لا يقبل سعراً أقل من أو يساوي 0. أدخل سعراً أكبر من 0`, `${what} has no price or a price of 0 — Flavours doesn't accept a price of 0 or less. Enter a price greater than 0`));
         continue;
       }
       const mk = norm(m.modifier_name_en);
@@ -323,9 +324,9 @@ export function buildPayloads(sheets, ctx) {
         }
         Object.assign(finals, explicit);
         // Flavours stores an app price as an amount ADDED to the base price and rejects a negative one (HTTP 422).
-        const what = m._default ? "المنتج" : `الخيار '${m.modifier_name_en}'`;
+        const what = m._default ? L("المنتج", "the product") : L(`الخيار '${m.modifier_name_en}'`, `option '${m.modifier_name_en}'`);
         for (const [key, v] of Object.entries(finals)) {
-          if (v < price) err(sheet, m._row, code, `سعر ${what} في ${key} (${v}) أقل من سعره الأساسي (${price}) — فليفرز لا يقبل سعر تطبيق أقل من السعر الأساسي. اكتب سعراً مساوياً أو أعلى، أو اترك الخانة فارغة`);
+          if (v < price) err(sheet, m._row, code, L(`سعر ${what} في ${key} (${v}) أقل من سعره الأساسي (${price}) — فليفرز لا يقبل سعر تطبيق أقل من السعر الأساسي. اكتب سعراً مساوياً أو أعلى، أو اترك الخانة فارغة`, `Price of ${what} in ${key} (${v}) is below its base price (${price}) — Flavours doesn't accept an app price below the base price. Enter an equal or higher price, or leave the cell empty`));
         }
       }
 

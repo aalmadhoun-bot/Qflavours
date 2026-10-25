@@ -1,4 +1,6 @@
-// Sign-in page. Kept free of other imports: everything except this page is behind the login.
+// Sign-in page. Imports only i18n.js: everything else is behind the login (see worker/middleware.js PUBLIC).
+import { errorText } from "./i18n.js";
+
 const $ = (id) => document.getElementById(id);
 
 $("form").onsubmit = async (e) => {
@@ -11,7 +13,7 @@ $("form").onsubmit = async (e) => {
       body: JSON.stringify({ email: $("email").value }),
     });
     const data = await res.json().catch(() => ({}));
-    if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    if (!res.ok) throw new Error(errorText(data, `HTTP ${res.status}`));
     location.href = "/";
   } catch (err) {
     $("msg").textContent = err.message;

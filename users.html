@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>المستخدمون — فليفرز</title>
+<script>try { if (localStorage.getItem("qf_lang") === "en") { document.documentElement.lang = "en"; document.documentElement.dir = "ltr"; } } catch (e) {}</script>
+<title data-en="Users — Flavours">المستخدمون — فليفرز</title>
 <link rel="icon" type="image/png" href="/img/flavours-icon.png">
 <link rel="stylesheet" href="css/app.css">
 </head>
@@ -12,37 +13,37 @@
 <main>
 
 <section class="card hidden" id="denied">
-  <h2>⛔ هذه الصفحة للمديرين فقط</h2>
-  <p class="hint">اطلب من المدير إضافتك كمدير إذا كنت تحتاج إدارة المستخدمين.</p>
+  <h2 data-en="⛔ This page is for admins only">⛔ هذه الصفحة للمديرين فقط</h2>
+  <p class="hint" data-en="Ask your admin to make you an admin if you need to manage users.">اطلب من المدير إضافتك كمدير إذا كنت تحتاج إدارة المستخدمين.</p>
 </section>
 
 <section class="card hidden" id="formCard">
-  <h2 id="formTitle">➕ إضافة مستخدم</h2>
+  <h2 id="formTitle"></h2>
   <form id="form">
     <div class="grid">
-      <div><label for="email">البريد الإلكتروني</label><input id="email" type="email" autocomplete="off" required></div>
-      <div><label for="name">الاسم</label><input id="name" type="text" required></div>
-      <div><label for="role">الصلاحية</label>
+      <div><label for="email" data-en="Email address">البريد الإلكتروني</label><input id="email" type="email" autocomplete="off" required></div>
+      <div><label for="name" data-en="Name">الاسم</label><input id="name" type="text" required></div>
+      <div><label for="role" data-en="Role">الصلاحية</label>
         <select id="role">
-          <option value="user">مستخدم — يستخدم الأداة فقط</option>
-          <option value="admin">مدير — يستخدم الأداة ويدير المستخدمين</option>
+          <option value="user" data-en="User — uses the tool only">مستخدم — يستخدم الأداة فقط</option>
+          <option value="admin" data-en="Admin — uses the tool and manages users">مدير — يستخدم الأداة ويدير المستخدمين</option>
         </select>
       </div>
     </div>
     <div class="row">
-      <button type="submit" id="save">إضافة</button>
-      <button type="button" id="cancel" class="sec hidden">إلغاء التعديل</button>
+      <button type="submit" id="save"></button>
+      <button type="button" id="cancel" class="sec hidden"></button>
     </div>
   </form>
   <div id="msg" class="status hidden"></div>
-  <p class="hint">الدخول حالياً بالبريد فقط بدون كلمة مرور: أي شخص يكتب بريداً مسجَّلاً هنا يدخل الأداة، فأضف فقط من تثق به.</p>
+  <p class="hint" data-en="Sign-in is currently by email only, with no password: anyone who types an email registered here gets into the tool, so only add people you trust.">الدخول حالياً بالبريد فقط بدون كلمة مرور: أي شخص يكتب بريداً مسجَّلاً هنا يدخل الأداة، فأضف فقط من تثق به.</p>
 </section>
 
 <section class="card hidden" id="listCard">
-  <h2>👥 المستخدمون <span class="pill" id="count">0</span></h2>
+  <h2>👥 <span data-en="Users">المستخدمون</span> <span class="pill" id="count">0</span></h2>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>الاسم</th><th>البريد</th><th>الصلاحية</th><th>أُضيف في</th><th></th></tr></thead>
+      <thead><tr><th data-en="Name">الاسم</th><th data-en="Email">البريد</th><th data-en="Role">الصلاحية</th><th data-en="Added on">أُضيف في</th><th></th></tr></thead>
       <tbody id="rows"></tbody>
     </table>
   </div>

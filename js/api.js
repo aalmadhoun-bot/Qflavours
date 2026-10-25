@@ -3,6 +3,8 @@
 // browsers, so if Bearer is refused the client switches to the site's Worker (worker/api/flavours.js),
 // which forwards the same request with the key as API-TOKEN.
 
+import { L, errorText as workerError } from "./i18n.js";
+
 export const DEFAULT_BASE_URL = "https://qflavours-api.qoyod.com/pos/api/v2";
 const PROXY_PATH = "/api/flavours";
 const PRODUCT_API_VERSION = "2.5.0";   // what the Q-Flavours web app sends for products
@@ -19,7 +21,7 @@ export class ApiError extends Error {
 
 function errorText(payload) {
   if (typeof payload === "string") {
-    return payload.trim().startsWith("<") ? "رد غير متوقع (صفحة HTML) — تأكد من عنوان الـ API" : payload.slice(0, 300);
+    return payload.trim().startsWith("<") ? L("رد غير متوقع (صفحة HTML) — تأكد من عنوان الـ API", "Unexpected reply (an HTML page) — check the API URL") : payload.slice(0, 300);
   }
   if (!payload || typeof payload !== "object") return String(payload);
   const meta = payload.meta || {};
@@ -63,7 +65,7 @@ export class Client {
     catch (e) {
       if (this.viaProxy || ![401, 403].includes(e.status) || !this.canProxy()) throw e;
       this.viaProxy = true;
-      this.log("↪️ رُفض المفتاح بطريقة Bearer — إعادة المحاولة عبر خادم الموقع (API-TOKEN)");
+      this.log(L("↪️ رُفض المفتاح بطريقة Bearer — إعادة المحاولة عبر خادم الموقع (API-TOKEN)", "↪️ The key was refused as Bearer — retrying through this site's server (API-TOKEN)"));
       try { return await this.send(method, path, opts); }
       catch (e2) {
         if (!e2.proxyMissing) throw e2;
@@ -94,7 +96,7 @@ export class Client {
       }
       if ([429, 502, 503, 504].includes(resp.status) && attempt < retries) {
         const wait = Number(resp.headers.get("Retry-After")) || 2 * (attempt + 1);
-        this.log(`⏳ ${resp.status} — إعادة المحاولة بعد ${wait} ث`);
+        this.log(L(`⏳ ${resp.status} — إعادة المحاولة بعد ${wait} ث`, `⏳ ${resp.status} — retrying in ${wait}s`));
         await sleep(wait * 1000);
         continue;
       }
@@ -103,8 +105,8 @@ export class Client {
       try { payload = JSON.parse(text); } catch { /* keep text */ }
       if (this.viaProxy && resp.status >= 400 && !resp.headers.get("x-flavours-proxy")) {
         // The answer came from this site, not from Q-Flavours: a Worker error (e.g. session expired) or no Worker at all.
-        if (payload?.error) throw new ApiError(payload.error, resp.status, payload);
-        throw Object.assign(new ApiError(`لا يوجد خادم وسيط على هذا الموقع (HTTP ${resp.status})`, resp.status), { proxyMissing: true });
+        if (payload?.error) throw new ApiError(workerError(payload), resp.status, payload);
+        throw Object.assign(new ApiError(L(`لا يوجد خادم وسيط على هذا الموقع (HTTP ${resp.status})`, `This site has no relay server (HTTP ${resp.status})`), resp.status), { proxyMissing: true });
       }
       if (resp.status >= 400) throw new ApiError(`HTTP ${resp.status}: ${errorText(payload)}`, resp.status, payload);
       const code = payload?.meta?.code;
@@ -112,7 +114,7 @@ export class Client {
       if (this.delay) await sleep(this.delay);
       return payload;
     }
-    throw new ApiError(`تعذّر الوصول إلى الخادم (${lastErr?.message || "network"}) — تحقق من الإنترنت أو من عنوان الـ API`);
+    throw new ApiError(L(`تعذّر الوصول إلى الخادم (${lastErr?.message || "network"}) — تحقق من الإنترنت أو من عنوان الـ API`, `Could not reach the server (${lastErr?.message || "network"}) — check your internet or the API URL`));
   }
 
   async *paginate(path, params = {}, { version, perPage = 100, maxPages = 200 } = {}) {
@@ -177,7 +179,7 @@ export class Client {
         const p = await this.request("POST", "product-categories", { body: b, version, retries: 1 });
         const d = p?.data ?? p;
         if (d && d.id !== undefined) return d;
-        last = new ApiError(`رد غير متوقع عند إنشاء التصنيف: ${JSON.stringify(p).slice(0, 200)}`);
+        last = new ApiError(L(`رد غير متوقع عند إنشاء التصنيف: ${JSON.stringify(p).slice(0, 200)}`, `Unexpected reply when creating the category: ${JSON.stringify(p).slice(0, 200)}`));
       } catch (e) {
         last = e;
         if (e.status === 422 && /exist/i.test(e.message)) {
@@ -188,7 +190,7 @@ export class Client {
         if (e.status === 401 || e.status === 403) break;
       }
     }
-    throw last || new ApiError("فشل إنشاء التصنيف");
+    throw last || new ApiError(L("فشل إنشاء التصنيف", "Could not create the category"));
   }
 
   // Every order type Flavours knows (delivery apps, dine-in, …). `adopted` = registered in this account

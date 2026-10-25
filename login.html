@@ -3,19 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>تسجيل الدخول — فليفرز</title>
+<script>try { if (localStorage.getItem("qf_lang") === "en") { document.documentElement.lang = "en"; document.documentElement.dir = "ltr"; } } catch (e) {}</script>
+<title data-en="Sign in — Flavours">تسجيل الدخول — فليفرز</title>
 <link rel="icon" type="image/png" href="/img/flavours-icon.png">
 <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
 <div class="login">
+  <button type="button" class="lang-btn sm login-lang" data-lang-toggle>English</button>
   <section class="card">
-    <img class="login-logo" src="/img/flavours-logo.png" alt="فليفرز">
-    <h1>أداة رفع البيانات</h1>
-    <p class="hint" style="text-align:center;margin:0">ادخل بالبريد الذي أضافه لك المدير</p>
+    <img class="login-logo" src="/img/flavours-logo.png" alt="Flavours — فليفرز">
+    <h1 data-en="Data Upload Tool">أداة رفع البيانات</h1>
+    <p class="sub" data-en="Sign in with the email your admin added for you">ادخل بالبريد الذي أضافه لك المدير</p>
     <form id="form">
-      <div><label for="email">البريد الإلكتروني</label><input id="email" type="email" autocomplete="username" required autofocus></div>
-      <button type="submit" id="btn">دخول</button>
+      <div><label for="email" data-en="Email address">البريد الإلكتروني</label><input id="email" type="email" autocomplete="username" required autofocus data-en-ph="name@company.com" placeholder="name@company.com"></div>
+      <button type="submit" id="btn" data-en="Sign in">دخول</button>
     </form>
     <div id="msg" class="status bad hidden"></div>
   </section>

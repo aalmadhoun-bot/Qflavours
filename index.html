@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>رفع بيانات فليفرز</title>
+<script>try { if (localStorage.getItem("qf_lang") === "en") { document.documentElement.lang = "en"; document.documentElement.dir = "ltr"; } } catch (e) {}</script>
+<title data-en="Flavours Data Upload">رفع بيانات فليفرز</title>
 <link rel="icon" type="image/png" href="/img/flavours-icon.png">
 <link rel="stylesheet" href="css/app.css">
 </head>
@@ -12,92 +13,92 @@
 <main>
 
 <ol class="stepper" id="stepper" aria-label="خطوات الرفع">
-  <li data-step="1"><button type="button"><span class="num">1</span><span class="lbl">الاتصال بحسابك</span></button></li>
-  <li data-step="2"><button type="button"><span class="num">2</span><span class="lbl">القالب والبيانات المرجعية</span></button></li>
-  <li data-step="3"><button type="button"><span class="num">3</span><span class="lbl">الرفع</span></button></li>
+  <li data-step="1"><button type="button"><span class="num">1</span><span class="lbl" data-en="Connect your account">الاتصال بحسابك</span></button></li>
+  <li data-step="2"><button type="button"><span class="num">2</span><span class="lbl" data-en="Template &amp; reference data">القالب والبيانات المرجعية</span></button></li>
+  <li data-step="3"><button type="button"><span class="num">3</span><span class="lbl" data-en="Upload">الرفع</span></button></li>
 </ol>
 
 <section class="card" id="connect" data-pane="1">
-  <h2><span class="step">1</span> الاتصال بحسابك</h2>
+  <h2 data-en="<span class=&quot;step&quot;>1</span> Connect your account"><span class="step">1</span> الاتصال بحسابك</h2>
   <div class="grid">
-    <div><label>مفتاح الـ API</label><input id="token" type="password" class="ltr" autocomplete="off"></div>
+    <div><label data-en="API key">مفتاح الـ API</label><input id="token" type="password" class="ltr" autocomplete="off"></div>
   </div>
-  <div class="radio"><label><input type="checkbox" id="remember"> تذكّر المفتاح على هذا المتصفح</label></div>
+  <div class="radio"><label><input type="checkbox" id="remember"> <span data-en="Remember the key on this browser">تذكّر المفتاح على هذا المتصفح</span></label></div>
   <details>
-    <summary>إعدادات متقدمة</summary>
+    <summary data-en="Advanced settings">إعدادات متقدمة</summary>
     <div class="grid" style="margin-top:10px">
-      <div><label>عنوان الـ API</label><input id="base" type="text" class="ltr"></div>
-      <div><label>Market ID (اختياري)</label><input id="market" type="text" class="ltr"></div>
-      <div><label>Branch ID (اختياري)</label><input id="branch" type="text" class="ltr"></div>
+      <div><label data-en="API URL">عنوان الـ API</label><input id="base" type="text" class="ltr"></div>
+      <div><label data-en="Market ID (optional)">Market ID (اختياري)</label><input id="market" type="text" class="ltr"></div>
+      <div><label data-en="Branch ID (optional)">Branch ID (اختياري)</label><input id="branch" type="text" class="ltr"></div>
     </div>
   </details>
-  <div class="row"><button id="btnConnect">🔌 اتصال وتحميل البيانات المرجعية</button></div>
-  <div id="connStatus" class="status">غير متصل</div>
-  <div class="row step-nav hidden" id="next1"><span class="hint">متصل — يمكنك المتابعة</span><button data-go="2">التالي: القالب ←</button></div>
-  <p class="hint">يُرسل المفتاح أولاً من متصفحك إلى خادم فليفرز مباشرة؛ وإن رفضه بتلك الطريقة يمر عبر خادم هذا الموقع ليُرسَل بهيدر API-TOKEN. لا يُخزَّن المفتاح على الخادم ولا يُسجَّل.</p>
+  <div class="row"><button id="btnConnect" data-en="🔌 Connect &amp; load reference data">🔌 اتصال وتحميل البيانات المرجعية</button></div>
+  <div id="connStatus" class="status"></div>
+  <div class="row step-nav hidden" id="next1"><span class="hint" data-en="Connected — you can continue">متصل — يمكنك المتابعة</span><button data-go="2" data-en="Next: Template →">التالي: القالب ←</button></div>
+  <p class="hint" data-en="The key is first sent from your browser straight to the Flavours server; if it refuses it that way, it goes through this site&#39;s server and is sent as an API-TOKEN header. The key is never stored or logged on the server.">يُرسل المفتاح أولاً من متصفحك إلى خادم فليفرز مباشرة؛ وإن رفضه بتلك الطريقة يمر عبر خادم هذا الموقع ليُرسَل بهيدر API-TOKEN. لا يُخزَّن المفتاح على الخادم ولا يُسجَّل.</p>
 </section>
 
 <section class="card hidden" id="templates" data-pane="2">
-  <h2><span class="step">2</span> القالب والبيانات المرجعية</h2>
-  <p class="hint">حمّل القالب وعبّئه. التصنيفات والتطبيقات (أنواع الطلب) غير الموجودة تُنشأ تلقائياً، أما المواد الخام فيجب أن تكون موجودة في فليفرز. بعد الاتصال حمّل <b>القالب الجاهز لحسابك</b>: أعمدة أسعار التطبيقات فيه هي أنواع الطلب المسجلة فعلياً في حسابك.</p>
+  <h2 data-en="<span class=&quot;step&quot;>2</span> Template &amp; reference data"><span class="step">2</span> القالب والبيانات المرجعية</h2>
+  <p class="hint" data-en="Download the template and fill it in. Missing categories and apps (order types) are created automatically; ingredients must already exist in Flavours. Once connected, download <b>the template for your account</b>: its app price columns are the order types actually registered in your account.">حمّل القالب وعبّئه. التصنيفات والتطبيقات (أنواع الطلب) غير الموجودة تُنشأ تلقائياً، أما المواد الخام فيجب أن تكون موجودة في فليفرز. بعد الاتصال حمّل <b>القالب الجاهز لحسابك</b>: أعمدة أسعار التطبيقات فيه هي أنواع الطلب المسجلة فعلياً في حسابك.</p>
   <div class="row">
-    <button id="btnTpl" disabled>⬇️ قالب جاهز لحسابي (بأنواع الطلب المسجلة)</button>
-    <a class="btn sec" href="templates/flavours_template.xlsx" download>⬇️ قالب Excel مع أمثلة</a>
-    <a class="btn sec" href="templates/flavours_template_empty.xlsx" download>⬇️ قالب فارغ</a>
-    <button id="btnRef" class="sec" disabled>📤 تصدير البيانات المرجعية من حسابي</button>
+    <button id="btnTpl" disabled data-en="⬇️ Template for my account (registered order types)">⬇️ قالب جاهز لحسابي (بأنواع الطلب المسجلة)</button>
+    <a class="btn sec" href="templates/flavours_template.xlsx" download data-en="⬇️ Excel template with examples">⬇️ قالب Excel مع أمثلة</a>
+    <a class="btn sec" href="templates/flavours_template_empty.xlsx" download data-en="⬇️ Empty template">⬇️ قالب فارغ</a>
+    <button id="btnRef" class="sec" disabled data-en="📤 Export reference data from my account">📤 تصدير البيانات المرجعية من حسابي</button>
   </div>
   <table style="margin-top:14px">
-    <tr><th>الورقة</th><th>المحتوى</th></tr>
-    <tr><td>Products</td><td>المنتجات — منتج بسعر واحد؟ اكتب price فقط (يجب أن يكون أكبر من 0)</td></tr>
-    <tr><td>Modifiers</td><td>الخيارات OPTION (أحجام) والإضافات ADDITIONAL بالسعر والتكلفة — وسعر كل خيار في كل تطبيق في عمود باسم التطبيق بعد price (موجود في القالب الجاهز لحسابك)</td></tr>
-    <tr><td>Recipes</td><td>الوصفة: المادة الخام والكمية لكل خيار</td></tr>
-    <tr><td>Delivery_Prices</td><td>السعر النهائي لكل خيار في كل تطبيق/نوع طلب (HUNGERSTATION, JAHEZ, …) — التطبيق غير المسجّل في حسابك يُفعَّل أو يُنشأ عند الرفع الفعلي</td></tr>
-    <tr><td>Price_Rules</td><td>نسبة زيادة تلقائية لكل تطبيق مع التقريب</td></tr>
-    <tr><td>Ingredients_Map</td><td>ربط اسم مادة خام برقمها (اختياري)</td></tr>
+    <tr><th data-en="Sheet">الورقة</th><th data-en="Contents">المحتوى</th></tr>
+    <tr><td>Products</td><td data-en="Products — single-price product? Fill in price only (must be greater than 0)">المنتجات — منتج بسعر واحد؟ اكتب price فقط (يجب أن يكون أكبر من 0)</td></tr>
+    <tr><td>Modifiers</td><td data-en="OPTION choices (sizes) and ADDITIONAL add-ons with price and cost — plus each option&#39;s price in each app, in a column named after the app right after price (in your account&#39;s template)">الخيارات OPTION (أحجام) والإضافات ADDITIONAL بالسعر والتكلفة — وسعر كل خيار في كل تطبيق في عمود باسم التطبيق بعد price (موجود في القالب الجاهز لحسابك)</td></tr>
+    <tr><td>Recipes</td><td data-en="Recipe: ingredient and quantity per option">الوصفة: المادة الخام والكمية لكل خيار</td></tr>
+    <tr><td>Delivery_Prices</td><td data-en="Final price of each option in each app/order type (HUNGERSTATION, JAHEZ, …) — an app not registered in your account is enabled or created on a live upload">السعر النهائي لكل خيار في كل تطبيق/نوع طلب (HUNGERSTATION, JAHEZ, …) — التطبيق غير المسجّل في حسابك يُفعَّل أو يُنشأ عند الرفع الفعلي</td></tr>
+    <tr><td>Price_Rules</td><td data-en="Automatic markup per app, with rounding">نسبة زيادة تلقائية لكل تطبيق مع التقريب</td></tr>
+    <tr><td>Ingredients_Map</td><td data-en="Map an ingredient name to its ID (optional)">ربط اسم مادة خام برقمها (اختياري)</td></tr>
   </table>
   <div class="row step-nav">
-    <button class="sec" data-go="1">→ رجوع</button>
-    <button data-go="3">التالي: الرفع ←</button>
+    <button class="sec" data-go="1" data-en="← Back">→ رجوع</button>
+    <button data-go="3" data-en="Next: Upload →">التالي: الرفع ←</button>
   </div>
 </section>
 
 <section class="card hidden" id="upload" data-pane="3">
-  <h2><span class="step">3</span> الرفع</h2>
-  <div id="drop" class="drop">اضغط لاختيار ملف Excel المعبأ (.xlsx) أو اسحبه هنا</div>
+  <h2 data-en="<span class=&quot;step&quot;>3</span> Upload"><span class="step">3</span> الرفع</h2>
+  <div id="drop" class="drop"><span data-en="Click to choose the filled Excel file (.xlsx) or drop it here">اضغط لاختيار ملف Excel المعبأ (.xlsx) أو اسحبه هنا</span></div>
   <input id="file" type="file" accept=".xlsx" class="hidden">
   <div id="counts" class="hint" style="margin-top:8px"></div>
   <div class="grid" style="margin-top:10px">
     <div class="radio" id="modes"></div>
     <div class="radio">
-      <label><input type="checkbox" id="createCats" checked> إنشاء التصنيفات غير الموجودة تلقائياً</label>
-      <label><input type="checkbox" id="createTypes" checked> إنشاء التطبيقات (أنواع الطلب) غير المسجلة تلقائياً</label>
-      <label><input type="checkbox" id="partial"> ارفع المنتجات السليمة حتى لو وُجدت أخطاء في منتجات أخرى</label>
-      <label><input type="checkbox" id="confirm"> أؤكد الرفع الفعلي على فليفرز</label>
+      <label><input type="checkbox" id="createCats" checked> <span data-en="Create missing categories automatically">إنشاء التصنيفات غير الموجودة تلقائياً</span></label>
+      <label><input type="checkbox" id="createTypes" checked> <span data-en="Create unregistered apps (order types) automatically">إنشاء التطبيقات (أنواع الطلب) غير المسجلة تلقائياً</span></label>
+      <label><input type="checkbox" id="partial"> <span data-en="Upload the valid products even if others have errors">ارفع المنتجات السليمة حتى لو وُجدت أخطاء في منتجات أخرى</span></label>
+      <label><input type="checkbox" id="confirm"> <span data-en="I confirm the live upload to Flavours">أؤكد الرفع الفعلي على فليفرز</span></label>
     </div>
   </div>
   <div class="row">
-    <button id="btnDry" disabled>🔍 فحص فقط (بدون رفع)</button>
-    <button id="btnLive" class="go" disabled>🚀 رفع فعلي</button>
+    <button id="btnDry" disabled data-en="🔍 Dry run (no upload)">🔍 فحص فقط (بدون رفع)</button>
+    <button id="btnLive" class="go" disabled data-en="🚀 Live upload">🚀 رفع فعلي</button>
   </div>
   <progress id="prog" value="0" max="1" class="hidden"></progress>
   <div id="result" class="hidden">
     <div class="metrics">
-      <div class="metric"><b id="mReady">0</b>جاهز</div>
-      <div class="metric"><b id="mOk" style="color:var(--ok)">0</b>تم بنجاح</div>
-      <div class="metric"><b id="mFail" style="color:var(--bad)">0</b>فشل</div>
-      <div class="metric"><b id="mErr" style="color:var(--bad)">0</b>أخطاء الملف</div>
-      <div class="metric"><b id="mWarn" style="color:var(--warn)">0</b>تحذيرات</div>
+      <div class="metric"><b id="mReady">0</b><span data-en="Ready">جاهز</span></div>
+      <div class="metric"><b id="mOk" style="color:var(--ok)">0</b><span data-en="Succeeded">تم بنجاح</span></div>
+      <div class="metric"><b id="mFail" style="color:var(--bad)">0</b><span data-en="Failed">فشل</span></div>
+      <div class="metric"><b id="mErr" style="color:var(--bad)">0</b><span data-en="File errors">أخطاء الملف</span></div>
+      <div class="metric"><b id="mWarn" style="color:var(--warn)">0</b><span data-en="Warnings">تحذيرات</span></div>
     </div>
     <div id="resMsg" class="status"></div>
-    <div class="row"><button id="btnReport" class="sec">⬇️ تحميل تقرير النتائج</button></div>
+    <div class="row"><button id="btnReport" class="sec" data-en="⬇️ Download results report">⬇️ تحميل تقرير النتائج</button></div>
   </div>
   <div class="row step-nav">
-    <button class="sec" data-go="2">→ رجوع إلى القالب</button>
+    <button class="sec" data-go="2" data-en="← Back to template">→ رجوع إلى القالب</button>
   </div>
 </section>
 
 <section class="card" id="log-card">
-  <h2>📜 السجل</h2>
+  <h2 data-en="📜 Log">📜 السجل</h2>
   <pre id="log">—</pre>
 </section>
 </main>

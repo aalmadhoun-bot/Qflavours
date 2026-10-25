@@ -18,9 +18,9 @@ export default {
     const ctx = { request, env, data: {} };
     ctx.next = async () => {
       const mod = route(url.pathname);
-      if (!mod) return url.pathname.startsWith("/api/") ? fail("غير موجود", 404) : env.ASSETS.fetch(request);
+      if (!mod) return url.pathname.startsWith("/api/") ? fail(["غير موجود", "Not found"], 404) : env.ASSETS.fetch(request);
       const handler = mod["onRequest" + request.method[0] + request.method.slice(1).toLowerCase()] || mod.onRequest;
-      return handler ? handler(ctx) : fail("الطريقة غير مدعومة", 405);
+      return handler ? handler(ctx) : fail(["الطريقة غير مدعومة", "Method not allowed"], 405);
     };
     return middleware(ctx);
   },
