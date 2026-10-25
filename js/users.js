@@ -1,11 +1,13 @@
 // Users page (admins): list, add, edit, delete — backed by worker/api/users.js.
-import { api, askConfirm, mountNav } from "./nav.js";
+import { L, lang } from "./i18n.js";
+import { api, askConfirm, displayName, mountNav } from "./nav.js";
 
 const $ = (id) => document.getElementById(id);
-const ROLES = { user: "مستخدم", admin: "مدير" };
+const ROLES = { user: ["مستخدم", "User"], admin: ["مدير", "Admin"] };
 const state = { me: null, users: [], editing: null };
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
-const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString("ar-SA-u-nu-latn", { year: "numeric", month: "short", day: "numeric" }) : "—";
+const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString(lang === "en" ? "en-GB" : "ar-SA-u-nu-latn", { year: "numeric", month: "short", day: "numeric" }) : "—";
+const roleName = (u) => (u.owner ? L("مالك", "Owner") : ROLES[u.role] ? L(...ROLES[u.role]) : esc(u.role));
 
 function setMsg(text, cls) {
   $("msg").textContent = text;
@@ -16,16 +18,24 @@ function render() {
   $("count").textContent = state.users.length;
   $("rows").innerHTML = state.users.map((u) => {
     const self = u.email === state.me.email;
-    const actions = u.owner ? '<span class="hint">يُدار من Cloudflare</span>' : `
-      <button class="sec sm" data-edit="${esc(u.email)}">تعديل</button>
-      ${self ? "" : `<button class="danger sm" data-del="${esc(u.email)}">حذف</button>`}`;
+    const actions = u.owner ? `<span class="hint">${L("يُدار من Cloudflare", "Managed in Cloudflare")}</span>` : `
+      <button class="sec sm" data-edit="${esc(u.email)}">${L("تعديل", "Edit")}</button>
+      ${self ? "" : `<button class="danger sm" data-del="${esc(u.email)}">${L("حذف", "Delete")}</button>`}`;
     return `<tr>
-      <td>${esc(u.name)}${self ? ' <span class="hint">(أنت)</span>' : ""}</td>
+      <td>${esc(displayName(u))}${self ? ` <span class="hint">${L("(أنت)", "(you)")}</span>` : ""}</td>
       <td><span class="pill">${esc(u.email)}</span></td>
-      <td>${u.owner ? "مالك" : ROLES[u.role] || esc(u.role)}</td>
+      <td>${roleName(u)}</td>
       <td>${fmtDate(u.created)}</td>
       <td style="white-space:nowrap">${actions}</td></tr>`;
   }).join("");
+}
+
+// Title and button follow the form's mode (adding or editing) in the current language.
+function renderFormLabels() {
+  const u = state.users.find((x) => x.email === state.editing);
+  $("formTitle").textContent = u ? L(`✏️ تعديل ${u.name}`, `✏️ Edit ${u.name}`) : L("➕ إضافة مستخدم", "➕ Add a user");
+  $("save").textContent = u ? L("حفظ التعديل", "Save changes") : L("إضافة", "Add");
+  $("cancel").textContent = L("إلغاء التعديل", "Cancel editing");
 }
 
 async function load() {
@@ -37,9 +47,8 @@ function resetForm() {
   state.editing = null;
   $("form").reset();
   $("email").readOnly = false;
-  $("formTitle").textContent = "➕ إضافة مستخدم";
-  $("save").textContent = "إضافة";
   $("cancel").classList.add("hidden");
+  renderFormLabels();
 }
 
 function editUser(email) {
@@ -49,10 +58,9 @@ function editUser(email) {
   $("email").value = u.email; $("email").readOnly = true;
   $("name").value = u.name;
   $("role").value = u.role;
-  $("formTitle").textContent = "✏️ تعديل " + u.name;
-  $("save").textContent = "حفظ التعديل";
   $("cancel").classList.remove("hidden");
   $("msg").classList.add("hidden");
+  renderFormLabels();
   $("formCard").scrollIntoView({ behavior: "smooth" });
 }
 
@@ -64,7 +72,8 @@ $("form").onsubmit = async (e) => {
   try {
     const body = { email: $("email").value, name: $("name").value, role: $("role").value };
     const user = await api("/api/users", { method: "POST", body });
-    setMsg(state.editing ? `✅ تم حفظ تعديلات ${user.name}` : `✅ تمت إضافة ${user.name} — يمكنه الدخول الآن بالبريد ${user.email}`, "ok");
+    setMsg(state.editing ? L(`✅ تم حفظ تعديلات ${user.name}`, `✅ Saved changes to ${user.name}`)
+      : L(`✅ تمت إضافة ${user.name} — يمكنه الدخول الآن بالبريد ${user.email}`, `✅ Added ${user.name} — they can now sign in with ${user.email}`), "ok");
     resetForm();
     await load();
   } catch (err) { setMsg(err.message, "bad"); }
@@ -76,15 +85,19 @@ $("rows").onclick = async (e) => {
   if (edit) editUser(edit.dataset.edit);
   if (del) {
     const email = del.dataset.del;
-    if (!(await askConfirm(`حذف المستخدم ${email}؟ لن يستطيع الدخول بعد ذلك.`, { ok: "حذف", danger: true }))) return;
+    const ok = await askConfirm(L(`حذف المستخدم ${email}؟ لن يستطيع الدخول بعد ذلك.`, `Delete the user ${email}? They won't be able to sign in anymore.`),
+      { ok: L("حذف", "Delete"), danger: true });
+    if (!ok) return;
     try {
       await api("/api/users?email=" + encodeURIComponent(email), { method: "DELETE" });
       if (state.editing === email) resetForm();
-      setMsg(`🗑️ تم حذف ${email}`, "ok");
+      setMsg(L(`🗑️ تم حذف ${email}`, `🗑️ Deleted ${email}`), "ok");
       await load();
     } catch (err) { setMsg(err.message, "bad"); }
   }
 };
+
+addEventListener("langchange", () => { if (state.me) { render(); renderFormLabels(); } });
 
 (async () => {
   state.me = await mountNav("users");

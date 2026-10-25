@@ -3,10 +3,13 @@ import { readWorkbook, saveXlsx as download, stamp, writeWorkbook } from "./exce
 import { MODES, connect, loadContext, referenceSheets, upload } from "./uploader.js";
 import { askConfirm, mountNav } from "./nav.js";
 import { accountTemplate } from "./template.js";
+import { L } from "./i18n.js";
 
-export const VERSION = "2.6.0";
+export const VERSION = "2.7.0";
 const $ = (id) => document.getElementById(id);
-const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null, step: 1 };
+// conn: "idle" | "connecting" | "ok" | "error" (with connError); summary: last run, so both re-render in the other language
+const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null, step: 1,
+  conn: "idle", connError: "", summary: null };
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
   set(k, v) { try { v === null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch { /* storage blocked */ } },
@@ -78,51 +81,82 @@ function init() {
   $("base").value = store.get("flv_base") || DEFAULT_BASE_URL;
   const saved = store.get("flv_token");
   if (saved) { $("token").value = saved; $("remember").checked = true; }
-  $("modes").innerHTML = Object.entries(MODES)
-    .map(([k, v], i) => `<label><input type="radio" name="mode" value="${k}" ${i ? "" : "checked"}> ${v}</label>`).join("");
+  renderModes();
+  renderConn();
   $("confirm").onchange = refresh;
   refresh();
   showStep(stepFromHash() ?? 1);
+  addEventListener("langchange", () => { renderModes(); renderConn(); renderResult(); });
+}
+
+function renderModes() {
+  const current = document.querySelector("input[name=mode]:checked")?.value;
+  $("modes").innerHTML = Object.entries(MODES).map(([k, [ar, en]], i) =>
+    `<label><input type="radio" name="mode" value="${k}" ${(current ? k === current : !i) ? "checked" : ""}> ${L(ar, en)}</label>`).join("");
+}
+
+function renderConn() {
+  const el = $("connStatus");
+  if (state.conn === "connecting") return setStatus(el, L("⏳ جارٍ الاتصال…", "⏳ Connecting…"));
+  if (state.conn === "error") return setStatus(el, "❌ " + state.connError, "bad");
+  if (state.conn !== "ok") return setStatus(el, L("غير متصل", "Not connected"));
+  const { client, ctx } = state;
+  el.className = "status ok";
+  el.innerHTML = `${L("✅ متصل", "✅ Connected")} — ${client.baseUrl}<br>Market: <span class="pill">${ctx.marketId || "-"}</span>
+    ${L("التصنيفات", "Categories")}: <b>${ctx.categories.length}</b> | ${L("المواد الخام", "Ingredients")}: <b>${ctx.ingredients.length}</b><br>
+    ${L("أنواع الطلب / التطبيقات", "Order types / apps")}: ${ctx.orderTypes.map((o) => `<span class="pill">${o.key}${o.active === false ? L(" (معطّل)", " (disabled)") : ""}</span>`).join("") || L("لا يوجد", "none")}`;
+}
+
+function renderResult() {
+  const m = state.summary;
+  if (!m) return;
+  let msg, cls;
+  if (m.blocked) { msg = L("⛔ يوجد أخطاء في الملف — لم يُرفع أي منتج. راجع التقرير وصحّح الأخطاء.", "⛔ The file has errors — no product was uploaded. Check the report and fix the errors."); cls = "bad"; }
+  else if (m.dryRun) { msg = L("🔍 فحص فقط — لم يُرفع شيء. راجع التقرير (ورقة Issues) ثم نفّذ الرفع الفعلي.", "🔍 Dry run — nothing was uploaded. Check the report (Issues sheet), then run the live upload."); cls = m.errors ? "bad" : "ok"; }
+  else {
+    msg = m.failed ? L(`تم رفع ${m.ok} وفشل ${m.failed} — التفاصيل في التقرير.`, `${m.ok} uploaded, ${m.failed} failed — details in the report.`)
+      : L(`✅ تم رفع ${m.ok} منتج بنجاح.`, `✅ ${m.ok} products uploaded successfully.`);
+    cls = m.failed ? "bad" : "ok";
+  }
+  setStatus($("resMsg"), msg, cls);
 }
 
 $("btnConnect").onclick = () => busy(async () => {
   const token = $("token").value.trim();
-  if (!token) return alert("أدخل مفتاح الـ API");
+  if (!token) return alert(L("أدخل مفتاح الـ API", "Enter the API key"));
   store.set("flv_token", $("remember").checked ? token : null);
   const base = $("base").value.trim() || DEFAULT_BASE_URL;
   store.set("flv_base", base === DEFAULT_BASE_URL ? null : base);
   clearLog();
-  setStatus($("connStatus"), "⏳ جارٍ الاتصال…");
+  state.conn = "connecting"; renderConn();
   try {
     const { client, me } = await connect(token, base, log);
     const ctx = await loadContext(client, me, { marketId: $("market").value.trim(), branchId: $("branch").value.trim() }, log);
-    Object.assign(state, { client, ctx });
-    $("connStatus").className = "status ok";
-    $("connStatus").innerHTML = `✅ متصل — ${client.baseUrl}<br>Market: <span class="pill">${ctx.marketId || "-"}</span>
-      التصنيفات: <b>${ctx.categories.length}</b> | المواد الخام: <b>${ctx.ingredients.length}</b><br>
-      أنواع الطلب / التطبيقات: ${ctx.orderTypes.map((o) => `<span class="pill">${o.key}${o.active === false ? " (معطّل)" : ""}</span>`).join("") || "لا يوجد"}`;
-    log("✅ تم الاتصال وتحميل البيانات المرجعية");
+    Object.assign(state, { client, ctx, conn: "ok" });
+    renderConn();
+    log(L("✅ تم الاتصال وتحميل البيانات المرجعية", "✅ Connected and reference data loaded"));
     setTimeout(() => { if (state.step === 1 && state.ctx === ctx) goStep(2); }, 900);  // let the success show, then move on
   } catch (e) {
-    state.ctx = null;
-    setStatus($("connStatus"), "❌ " + e.message, "bad");
+    Object.assign(state, { ctx: null, conn: "error", connError: e.message });
+    renderConn();
     log("❌ " + e.message);
   }
 });
 
 $("btnRef").onclick = () => busy(async () => {
   try {
-    log("📤 جارٍ تصدير البيانات المرجعية…");
+    log(L("📤 جارٍ تصدير البيانات المرجعية…", "📤 Exporting reference data…"));
     download(await writeWorkbook(await referenceSheets(state.client, state.ctx)), `flavours_reference_${stamp()}.xlsx`);
-    log("✅ تم تصدير البيانات المرجعية");
+    log(L("✅ تم تصدير البيانات المرجعية", "✅ Reference data exported"));
   } catch (e) { log("❌ " + e.message); alert(e.message); }
 });
 
 $("btnTpl").onclick = () => busy(async () => {
   try {
-    log("📄 جارٍ تجهيز قالب خاص بحسابك…");
+    log(L("📄 جارٍ تجهيز قالب خاص بحسابك…", "📄 Preparing a template for your account…"));
     download(await accountTemplate(state.ctx), `flavours_template_market-${state.ctx.marketId ?? "x"}_${stamp()}.xlsx`);
-    log(`✅ تم تحميل القالب — أعمدة التطبيقات: ${state.ctx.orderTypes.filter((t) => t.active !== false).map((t) => t.key).join("، ") || "لا يوجد"}`);
+    const cols = state.ctx.orderTypes.filter((t) => t.active !== false).map((t) => t.key);
+    log(L(`✅ تم تحميل القالب — أعمدة التطبيقات: ${cols.join("، ") || "لا يوجد"}`, `✅ Template downloaded — app columns: ${cols.join(", ") || "none"}`));
   } catch (e) { log("❌ " + e.message); alert(e.message); }
 });
 
@@ -140,13 +174,13 @@ async function loadFile(f) {
     $("counts").innerHTML = Object.entries(state.sheets).map(([k, v]) => `${k}: <b>${v.length}</b>`).join(" &nbsp;|&nbsp; ");
   } catch (e) {
     state.sheets = null;
-    $("counts").textContent = "تعذّر قراءة الملف: " + e.message;
+    $("counts").textContent = L("تعذّر قراءة الملف: ", "Could not read the file: ") + e.message;
   }
   refresh();
 }
 
 async function run(live) {
-  if (live && !(await askConfirm("سيتم رفع البيانات فعلياً على فليفرز. متابعة؟", { ok: "🚀 رفع فعلي" }))) return;
+  if (live && !(await askConfirm(L("سيتم رفع البيانات فعلياً على فليفرز. متابعة؟", "The data will be uploaded to Flavours for real. Continue?"), { ok: L("🚀 رفع فعلي", "🚀 Live upload") }))) return;
   busy(async () => {
     clearLog();
     $("prog").classList.remove("hidden"); $("prog").value = 0; $("result").classList.add("hidden");
@@ -161,11 +195,8 @@ async function run(live) {
       const m = out.summary;
       $("mReady").textContent = m.ready; $("mOk").textContent = m.ok; $("mFail").textContent = m.failed;
       $("mErr").textContent = m.errors; $("mWarn").textContent = m.warnings;
-      let msg, cls;
-      if (m.blocked) { msg = "⛔ يوجد أخطاء في الملف — لم يُرفع أي منتج. راجع التقرير وصحّح الأخطاء."; cls = "bad"; }
-      else if (m.dryRun) { msg = "🔍 فحص فقط — لم يُرفع شيء. راجع التقرير (ورقة Issues) ثم نفّذ الرفع الفعلي."; cls = m.errors ? "bad" : "ok"; }
-      else { msg = m.failed ? `تم رفع ${m.ok} وفشل ${m.failed} — التفاصيل في التقرير.` : `✅ تم رفع ${m.ok} منتج بنجاح.`; cls = m.failed ? "bad" : "ok"; }
-      setStatus($("resMsg"), msg, cls);
+      state.summary = m;
+      renderResult();
       state.report = { results: out.results, issues: out.issues };
       $("result").classList.remove("hidden");
     } catch (e) { log("❌ " + e.message); alert(e.message); }

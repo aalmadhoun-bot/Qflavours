@@ -12,7 +12,8 @@ export const ROLES = { user: "مستخدم", admin: "مدير" };
 export const json = (data, status = 200, headers = {}) => new Response(JSON.stringify(data), {
   status, headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers },
 });
-export const fail = (error, status = 400) => json({ error }, status);
+// error: a message, or [arabic, english] so the page can show the visitor's language ({ error, error_en }).
+export const fail = (error, status = 400) => json(Array.isArray(error) ? { error: error[0], error_en: error[1] } : { error }, status);
 
 export const normEmail = (e) => String(e || "").trim().toLowerCase();
 export const validEmail = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e);
@@ -34,9 +35,9 @@ async function hmac(secret, data) {
 }
 
 export const configError = (env) =>
-  !env.USERS ? "لم يُربط مخزن KV باسم USERS" :
-  !env.SESSION_SECRET ? "المتغير SESSION_SECRET غير مضبوط" :
-  !env.ADMIN_EMAIL ? "المتغير ADMIN_EMAIL غير مضبوط" : "";
+  !env.USERS ? "لم يُربط مخزن KV باسم USERS / KV namespace USERS is not bound" :
+  !env.SESSION_SECRET ? "المتغير SESSION_SECRET غير مضبوط / SESSION_SECRET is not set" :
+  !env.ADMIN_EMAIL ? "المتغير ADMIN_EMAIL غير مضبوط / ADMIN_EMAIL is not set" : "";
 
 const ownerUser = (env) => ({ email: normEmail(env.ADMIN_EMAIL), name: "المالك", role: "admin", owner: true });
 export const isOwner = (env, email) => normEmail(email) === normEmail(env.ADMIN_EMAIL);

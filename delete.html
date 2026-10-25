@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>حذف المنتجات — فليفرز</title>
+<script>try { if (localStorage.getItem("qf_lang") === "en") { document.documentElement.lang = "en"; document.documentElement.dir = "ltr"; } } catch (e) {}</script>
+<title data-en="Delete products — Flavours">حذف المنتجات — فليفرز</title>
 <link rel="icon" type="image/png" href="/img/flavours-icon.png">
 <link rel="stylesheet" href="css/app.css">
 </head>
@@ -12,78 +13,78 @@
 <main>
 
 <section class="card hidden" id="denied">
-  <h2>⛔ هذه الصفحة للمديرين فقط</h2>
-  <p class="hint">حذف المنتجات متاح للمديرين فقط. اطلب من المدير ترقية حسابك إذا كنت تحتاجه.</p>
+  <h2 data-en="⛔ This page is for admins only">⛔ هذه الصفحة للمديرين فقط</h2>
+  <p class="hint" data-en="Deleting products is for admins only. Ask your admin to upgrade your account if you need it.">حذف المنتجات متاح للمديرين فقط. اطلب من المدير ترقية حسابك إذا كنت تحتاجه.</p>
 </section>
 
 <div id="page" class="hidden" style="display:grid;gap:18px">
 
 <section class="card warn-card">
-  <h2>⚠️ حذف المنتجات نهائي</h2>
-  <p class="hint" style="margin:0">المنتج المحذوف من فليفرز لا يمكن استرجاعه من هنا. حمّل النسخة الاحتياطية قبل الحذف، وجرّب أولاً بحذف منتج واحد أو اثنين محددين قبل حذف الكل.</p>
+  <h2 data-en="⚠️ Deleting products is permanent">⚠️ حذف المنتجات نهائي</h2>
+  <p class="hint" style="margin:0" data-en="A product deleted from Flavours can't be restored from here. Download the backup before deleting, and first try deleting one or two selected products before deleting all.">المنتج المحذوف من فليفرز لا يمكن استرجاعه من هنا. حمّل النسخة الاحتياطية قبل الحذف، وجرّب أولاً بحذف منتج واحد أو اثنين محددين قبل حذف الكل.</p>
 </section>
 
 <section class="card">
-  <h2><span class="step">1</span> الاتصال بحسابك</h2>
+  <h2 data-en="<span class=&quot;step&quot;>1</span> Connect your account"><span class="step">1</span> الاتصال بحسابك</h2>
   <div class="grid">
-    <div><label for="token">مفتاح الـ API</label><input id="token" type="password" class="ltr" autocomplete="off"></div>
+    <div><label for="token" data-en="API key">مفتاح الـ API</label><input id="token" type="password" class="ltr" autocomplete="off"></div>
   </div>
   <details>
-    <summary>إعدادات متقدمة</summary>
+    <summary data-en="Advanced settings">إعدادات متقدمة</summary>
     <div class="grid" style="margin-top:10px">
-      <div><label for="market">Market ID (اختياري)</label><input id="market" type="text" class="ltr"></div>
+      <div><label for="market" data-en="Market ID (optional)">Market ID (اختياري)</label><input id="market" type="text" class="ltr"></div>
     </div>
   </details>
-  <div class="row"><button id="btnConnect">🔌 اتصال وجلب المنتجات</button></div>
-  <div id="connStatus" class="status">غير متصل</div>
+  <div class="row"><button id="btnConnect" data-en="🔌 Connect &amp; load products">🔌 اتصال وجلب المنتجات</button></div>
+  <div id="connStatus" class="status"></div>
 </section>
 
 <section class="card hidden" id="listCard">
-  <h2><span class="step">2</span> المنتجات <span class="pill" id="count">0</span></h2>
+  <h2><span class="step">2</span> <span data-en="Products">المنتجات</span> <span class="pill" id="count">0</span></h2>
   <div class="row" style="margin-top:0">
-    <button id="btnBackup" class="sec">⬇️ نسخة احتياطية (Excel)</button>
-    <button id="btnReload" class="sec">🔄 تحديث القائمة</button>
-    <input id="search" type="text" placeholder="بحث بالاسم أو الرقم…" style="flex:1;min-width:180px">
+    <button id="btnBackup" class="sec" data-en="⬇️ Backup (Excel)">⬇️ نسخة احتياطية (Excel)</button>
+    <button id="btnReload" class="sec" data-en="🔄 Refresh list">🔄 تحديث القائمة</button>
+    <input id="search" type="text" placeholder="بحث بالاسم أو الرقم…" data-en-ph="Search by name or ID…" style="flex:1;min-width:180px">
   </div>
   <div class="table-wrap list-wrap">
     <table>
       <thead><tr>
-        <th style="width:36px"><input type="checkbox" id="checkAll" title="تحديد الكل (المعروض)"></th>
-        <th>ID</th><th>الاسم بالعربي</th><th>الاسم بالإنجليزي</th><th>التصنيف</th>
+        <th style="width:36px"><input type="checkbox" id="checkAll" title="تحديد الكل (المعروض)" data-en-title="Select all (shown)"></th>
+        <th>ID</th><th data-en="Arabic name">الاسم بالعربي</th><th data-en="English name">الاسم بالإنجليزي</th><th data-en="Category">التصنيف</th>
       </tr></thead>
       <tbody id="rows"></tbody>
     </table>
   </div>
-  <p class="hint" id="selInfo">المحدد: 0</p>
+  <p class="hint" id="selInfo"></p>
 </section>
 
 <section class="card hidden" id="deleteCard">
-  <h2><span class="step">3</span> الحذف</h2>
+  <h2 data-en="<span class=&quot;step&quot;>3</span> Delete"><span class="step">3</span> الحذف</h2>
   <div class="radio">
-    <label><input type="radio" name="mode" value="selected" checked> حذف المنتجات المحددة فقط (<b id="selCount">0</b>)</label>
-    <label><input type="radio" name="mode" value="all"> حذف <b>كل</b> المنتجات (<b id="allCount">0</b>)</label>
+    <label><input type="radio" name="mode" value="selected" checked> <span data-en="Delete the selected products only">حذف المنتجات المحددة فقط</span> (<b id="selCount">0</b>)</label>
+    <label><input type="radio" name="mode" value="all"> <span data-en="Delete &lt;b&gt;all&lt;/b&gt; products">حذف <b>كل</b> المنتجات</span> (<b id="allCount">0</b>)</label>
   </div>
   <div class="grid" style="margin-top:8px">
     <div><label for="confirmText" id="confirmLabel"></label><input id="confirmText" type="text" autocomplete="off"></div>
   </div>
   <div class="row">
-    <button id="btnDelete" class="danger-solid" disabled>🗑️ حذف</button>
-    <button id="btnStop" class="sec hidden">⏹️ إيقاف</button>
+    <button id="btnDelete" class="danger-solid" disabled></button>
+    <button id="btnStop" class="sec hidden" data-en="⏹️ Stop">⏹️ إيقاف</button>
   </div>
   <progress id="prog" value="0" max="1" class="hidden"></progress>
   <div id="result" class="hidden">
     <div class="metrics">
-      <div class="metric"><b id="mDone" style="color:var(--ok)">0</b>حُذف</div>
-      <div class="metric"><b id="mFail" style="color:var(--bad)">0</b>فشل</div>
-      <div class="metric"><b id="mLeft">0</b>متبقٍ</div>
+      <div class="metric"><b id="mDone" style="color:var(--ok)">0</b><span data-en="Deleted">حُذف</span></div>
+      <div class="metric"><b id="mFail" style="color:var(--bad)">0</b><span data-en="Failed">فشل</span></div>
+      <div class="metric"><b id="mLeft">0</b><span data-en="Remaining">متبقٍ</span></div>
     </div>
     <div id="resMsg" class="status"></div>
-    <div class="row"><button id="btnReport" class="sec">⬇️ تحميل تقرير الحذف</button></div>
+    <div class="row"><button id="btnReport" class="sec" data-en="⬇️ Download deletion report">⬇️ تحميل تقرير الحذف</button></div>
   </div>
 </section>
 
 <section class="card">
-  <h2>📜 السجل</h2>
+  <h2 data-en="📜 Log">📜 السجل</h2>
   <pre id="log">—</pre>
 </section>
 

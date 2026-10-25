@@ -2,18 +2,26 @@
 // back them up to Excel, then delete the selected ones or all of them (one by one, stoppable, with a report).
 import { Client } from "./api.js";
 import { saveXlsx, stamp, writeWorkbook } from "./excel.js";
+import { L } from "./i18n.js";
 import { askConfirm, mountNav } from "./nav.js";
 import { connect } from "./uploader.js";
 
 const $ = (id) => document.getElementById(id);
-const CONFIRM = { selected: "احذف", all: "احذف الكل" };
-const state = { client: null, marketId: null, products: [], selected: new Set(), busy: false, stop: false, report: null };
+// The word to type before deleting; either language's word is accepted.
+const CONFIRM = { selected: ["احذف", "DELETE"], all: ["احذف الكل", "DELETE ALL"] };
+// conn / outcome are kept so they re-render in the other language
+const state = { client: null, marketId: null, products: [], selected: new Set(), busy: false, stop: false, report: null,
+  conn: "idle", connError: "", outcome: null };
 const store = {
   get(k) { try { return localStorage.getItem(k); } catch { return null; } },
 };
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 const mode = () => document.querySelector("input[name=mode]:checked").value;
-const catName = (p) => p.category?.name_ar || p.category?.name_en || p.product_category?.name_ar || p.category_id || p.product_category_id || "—";
+const confirmWord = () => L(...CONFIRM[mode()]);
+const confirmed = () => CONFIRM[mode()].includes($("confirmText").value.trim());
+const catName = (p) => L(p.category?.name_ar, p.category?.name_en) || p.category?.name_en || p.category?.name_ar
+  || p.product_category?.name_ar || p.category_id || p.product_category_id || "—";
+const productName = (p) => L(p.name_ar, p.name_en) || p.name_en || p.name_ar;
 
 function log(msg) {
   const el = $("log");
@@ -30,13 +38,32 @@ function refresh() {
   const n = targets().length;
   $("selCount").textContent = state.selected.size;
   $("allCount").textContent = state.products.length;
-  $("selInfo").textContent = `المحدد: ${state.selected.size} من ${state.products.length}`;
-  $("confirmLabel").textContent = `للتأكيد اكتب: ${CONFIRM[mode()]}`;
-  $("btnDelete").textContent = `🗑️ حذف ${n} منتج`;
-  $("btnDelete").disabled = state.busy || !n || $("confirmText").value.trim() !== CONFIRM[mode()];
+  $("selInfo").textContent = L(`المحدد: ${state.selected.size} من ${state.products.length}`, `Selected: ${state.selected.size} of ${state.products.length}`);
+  $("confirmLabel").textContent = L(`للتأكيد اكتب: ${confirmWord()}`, `To confirm, type: ${confirmWord()}`);
+  $("btnDelete").textContent = L(`🗑️ حذف ${n} منتج`, `🗑️ Delete ${n} products`);
+  $("btnDelete").disabled = state.busy || !n || !confirmed();
   for (const id of ["btnConnect", "btnBackup", "btnReload"]) $(id).disabled = state.busy;
   document.querySelectorAll("input[name=mode]").forEach((r) => { r.disabled = state.busy; });
   $("btnStop").classList.toggle("hidden", !state.busy);
+}
+
+function renderConn() {
+  const el = $("connStatus");
+  if (state.conn === "connecting") return setStatus(el, L("⏳ جارٍ الاتصال…", "⏳ Connecting…"));
+  if (state.conn === "error") return setStatus(el, "❌ " + state.connError, "bad");
+  if (state.conn === "ok") {
+    return setStatus(el, L(`✅ متصل — Market: ${state.marketId || "-"} — المنتجات: ${state.products.length}`,
+      `✅ Connected — Market: ${state.marketId || "-"} — products: ${state.products.length}`), "ok");
+  }
+  setStatus(el, L("غير متصل", "Not connected"));
+}
+
+function renderOutcome() {
+  const o = state.outcome;
+  if (!o) return;
+  const text = L(`${o.stopped ? "⏹️ أُوقف الحذف. " : ""}حُذف ${o.done} من ${o.total}${o.failed ? ` — فشل ${o.failed} (التفاصيل في التقرير)` : ""}.`,
+    `${o.stopped ? "⏹️ Deletion stopped. " : ""}Deleted ${o.done} of ${o.total}${o.failed ? ` — ${o.failed} failed (details in the report)` : ""}.`);
+  setStatus($("resMsg"), text, o.failed ? "bad" : "ok");
 }
 
 function visible() {
@@ -51,21 +78,22 @@ function renderRows() {
   $("rows").innerHTML = list.map((p) => `<tr>
     <td><input type="checkbox" data-id="${esc(p.id)}" ${state.selected.has(String(p.id)) ? "checked" : ""}></td>
     <td><span class="pill">${esc(p.id)}</span></td>
-    <td>${esc(p.name_ar)}</td><td style="direction:ltr;text-align:right">${esc(p.name_en)}</td>
-    <td>${esc(catName(p))}</td></tr>`).join("") || `<tr><td colspan="5" class="hint">لا توجد منتجات${$("search").value ? " مطابقة للبحث" : ""}</td></tr>`;
+    <td>${esc(p.name_ar)}</td><td><bdi dir="ltr">${esc(p.name_en)}</bdi></td>
+    <td>${esc(catName(p))}</td></tr>`).join("")
+    || `<tr><td colspan="5" class="hint">${$("search").value ? L("لا توجد منتجات مطابقة للبحث", "No products match the search") : L("لا توجد منتجات", "No products")}</td></tr>`;
   $("checkAll").checked = list.length > 0 && list.every((p) => state.selected.has(String(p.id)));
   refresh();
 }
 
 async function loadProducts() {
-  log("📦 جارٍ جلب المنتجات…");
+  log(L("📦 جارٍ جلب المنتجات…", "📦 Loading products…"));
   let items;
   try { items = await state.client.products(state.marketId, ["options"]); }
   catch { items = await state.client.products(state.marketId); }
   state.products = items.filter((p) => p && p.id !== undefined);
   const ids = new Set(state.products.map((p) => String(p.id)));
   state.selected = new Set([...state.selected].filter((id) => ids.has(id)));
-  log(`✓ عدد المنتجات: ${state.products.length}`);
+  log(L(`✓ عدد المنتجات: ${state.products.length}`, `✓ Products: ${state.products.length}`));
   $("listCard").classList.remove("hidden");
   $("deleteCard").classList.remove("hidden");
   renderRows();
@@ -78,24 +106,24 @@ async function busy(fn) {
 
 $("btnConnect").onclick = () => busy(async () => {
   const token = $("token").value.trim();
-  if (!token) return alert("أدخل مفتاح الـ API");
+  if (!token) return alert(L("أدخل مفتاح الـ API", "Enter the API key"));
   $("log").textContent = "";
-  setStatus($("connStatus"), "⏳ جارٍ الاتصال…");
+  state.conn = "connecting"; renderConn();
   try {
     const { client, me } = await connect(token, null, log);
     state.client = client;
     state.marketId = $("market").value.trim() || Client.marketIdOf(me);
-    if (!state.marketId) log("⚠️ لم يتم العثور على market_id — أدخله يدوياً من الإعدادات المتقدمة");
+    if (!state.marketId) log(L("⚠️ لم يتم العثور على market_id — أدخله يدوياً من الإعدادات المتقدمة", "⚠️ market_id not found — enter it in the advanced settings"));
     await loadProducts();
-    setStatus($("connStatus"), `✅ متصل — Market: ${state.marketId || "-"} — المنتجات: ${state.products.length}`, "ok");
+    state.conn = "ok";
   } catch (e) {
-    state.client = null;
-    setStatus($("connStatus"), "❌ " + e.message, "bad");
+    Object.assign(state, { client: null, conn: "error", connError: e.message });
     log("❌ " + e.message);
   }
+  renderConn();
 });
 
-$("btnReload").onclick = () => busy(() => loadProducts().catch((e) => log("❌ " + e.message)));
+$("btnReload").onclick = () => busy(() => loadProducts().then(renderConn).catch((e) => log("❌ " + e.message)));
 
 $("btnBackup").onclick = () => busy(async () => {
   const rows = state.products.map((p) => ({
@@ -105,7 +133,7 @@ $("btnBackup").onclick = () => busy(async () => {
     json: JSON.stringify(p),
   }));
   saveXlsx(await writeWorkbook({ Products: rows }), `flavours_products_backup_${stamp()}.xlsx`);
-  log(`💾 تم تحميل نسخة احتياطية لـ ${rows.length} منتج`);
+  log(L(`💾 تم تحميل نسخة احتياطية لـ ${rows.length} منتج`, `💾 Backup downloaded for ${rows.length} products`));
 });
 
 $("search").oninput = renderRows;
@@ -121,14 +149,19 @@ $("checkAll").onchange = (e) => {
 };
 document.querySelectorAll("input[name=mode]").forEach((r) => { r.onchange = () => { $("confirmText").value = ""; refresh(); }; });
 $("confirmText").oninput = refresh;
-$("btnStop").onclick = () => { state.stop = true; $("btnStop").disabled = true; log("⏹️ سيتوقف الحذف بعد المنتج الحالي…"); };
+$("btnStop").onclick = () => {
+  state.stop = true; $("btnStop").disabled = true;
+  log(L("⏹️ سيتوقف الحذف بعد المنتج الحالي…", "⏹️ Deletion will stop after the current product…"));
+};
 
 $("btnDelete").onclick = async () => {
   const list = targets();
-  if (!list.length || $("confirmText").value.trim() !== CONFIRM[mode()]) return;
-  const what = mode() === "all" ? `كل المنتجات (${list.length})` : `${list.length} منتج محدد`;
-  const go = await askConfirm(`سيتم حذف ${what} نهائياً من فليفرز.\nلا يمكن التراجع عن هذه العملية.\n\nمتابعة؟`, { ok: `🗑️ نعم، احذف ${list.length}`, danger: true });
-  if (!go) return log("• أُلغي الحذف");
+  if (!list.length || !confirmed()) return;
+  const what = mode() === "all" ? L(`كل المنتجات (${list.length})`, `all products (${list.length})`) : L(`${list.length} منتج محدد`, `${list.length} selected products`);
+  const go = await askConfirm(L(`سيتم حذف ${what} نهائياً من فليفرز.\nلا يمكن التراجع عن هذه العملية.\n\nمتابعة؟`,
+    `This will permanently delete ${what} from Flavours.\nThis can't be undone.\n\nContinue?`),
+    { ok: L(`🗑️ نعم، احذف ${list.length}`, `🗑️ Yes, delete ${list.length}`), danger: true });
+  if (!go) return log(L("• أُلغي الحذف", "• Deletion cancelled"));
   busy(async () => {
     state.stop = false; $("btnStop").disabled = false;
     $("prog").classList.remove("hidden"); $("prog").value = 0;
@@ -136,34 +169,38 @@ $("btnDelete").onclick = async () => {
     const report = [];
     let done = 0, failed = 0;
     const show = () => { $("mDone").textContent = done; $("mFail").textContent = failed; $("mLeft").textContent = list.length - report.length; };
-    log(`🗑️ بدء حذف ${list.length} منتج…`);
+    log(L(`🗑️ بدء حذف ${list.length} منتج…`, `🗑️ Deleting ${list.length} products…`));
     for (const p of list) {
       if (state.stop) break;
       const row = { id: p.id, name_ar: p.name_ar, name_en: p.name_en, result: "", error: null };
       try {
         await state.client.deleteProduct(p.id);
-        row.result = "حُذف"; done++;
-        log(`✓ حُذف: ${p.name_ar || p.name_en} (ID ${p.id})`);
+        row.result = L("حُذف", "Deleted"); done++;
+        log(L(`✓ حُذف: ${productName(p)} (ID ${p.id})`, `✓ Deleted: ${productName(p)} (ID ${p.id})`));
       } catch (e) {
-        if (e.status === 404) { row.result = "غير موجود"; done++; log(`• غير موجود (ربما حُذف مسبقاً): ID ${p.id}`); }
-        else { row.result = "فشل"; row.error = e.message; failed++; log(`❌ فشل حذف ${p.name_ar || p.name_en} (ID ${p.id}): ${e.message}`); }
+        if (e.status === 404) {
+          row.result = L("غير موجود", "Not found"); done++;
+          log(L(`• غير موجود (ربما حُذف مسبقاً): ID ${p.id}`, `• Not found (maybe already deleted): ID ${p.id}`));
+        } else {
+          row.result = L("فشل", "Failed"); row.error = e.message; failed++;
+          log(L(`❌ فشل حذف ${productName(p)} (ID ${p.id}): ${e.message}`, `❌ Could not delete ${productName(p)} (ID ${p.id}): ${e.message}`));
+        }
       }
       report.push(row);
       $("prog").value = report.length / list.length;
       show();
     }
-    for (const p of list.slice(report.length)) report.push({ id: p.id, name_ar: p.name_ar, name_en: p.name_en, result: "لم يُنفَّذ (أُوقف)", error: null });
+    const stopped = report.length < list.length;
+    for (const p of list.slice(report.length)) report.push({ id: p.id, name_ar: p.name_ar, name_en: p.name_en, result: L("لم يُنفَّذ (أُوقف)", "Not done (stopped)"), error: null });
     show();
     state.report = report;
-    const stopped = report.some((r) => r.result.startsWith("لم يُنفَّذ"));
-    setStatus($("resMsg"),
-      `${stopped ? "⏹️ أُوقف الحذف. " : ""}حُذف ${done} من ${list.length}${failed ? ` — فشل ${failed} (التفاصيل في التقرير)` : ""}.`,
-      failed ? "bad" : "ok");
-    log(`🏁 انتهى: حُذف ${done}، فشل ${failed}${stopped ? "، وأُوقف قبل الباقي" : ""}`);
+    state.outcome = { done, failed, total: list.length, stopped };
+    renderOutcome();
+    log(L(`🏁 انتهى: حُذف ${done}، فشل ${failed}${stopped ? "، وأُوقف قبل الباقي" : ""}`, `🏁 Done: ${done} deleted, ${failed} failed${stopped ? ", stopped before the rest" : ""}`));
     $("prog").classList.add("hidden");
     $("confirmText").value = "";
     state.selected.clear();
-    await loadProducts().catch((e) => log("❌ تعذّر تحديث القائمة: " + e.message));
+    await loadProducts().then(renderConn).catch((e) => log(L("❌ تعذّر تحديث القائمة: ", "❌ Could not refresh the list: ") + e.message));
   });
 };
 
@@ -171,7 +208,10 @@ $("btnReport").onclick = async () => {
   if (state.report) saveXlsx(await writeWorkbook({ Deleted: state.report }), `flavours_delete_report_${stamp()}.xlsx`);
 };
 
+addEventListener("langchange", () => { renderConn(); renderOutcome(); if (state.products.length) renderRows(); else refresh(); });
+
 (async () => {
+  renderConn();
   const me = await mountNav("delete");
   if (me.role !== "admin") return $("denied").classList.remove("hidden");
   $("page").classList.remove("hidden");

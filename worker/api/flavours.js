@@ -11,9 +11,9 @@ const PASS_OUT = ["content-type", "retry-after"];
 export async function onRequest({ request }) {
   const url = new URL(request.url);
   const target = new URL(`${FLAVOURS_API}/${url.pathname.slice(PREFIX.length)}${url.search}`);
-  if (!target.href.startsWith(FLAVOURS_API + "/") || target.href === FLAVOURS_API + "/") return fail("مسار غير صالح");
+  if (!target.href.startsWith(FLAVOURS_API + "/") || target.href === FLAVOURS_API + "/") return fail(["مسار غير صالح", "Invalid path"]);
   const token = request.headers.get("X-Flavours-Token");
-  if (!token) return fail("مفتاح الـ API مفقود");
+  if (!token) return fail(["مفتاح الـ API مفقود", "The API key is missing"]);
 
   const headers = new Headers({ "API-TOKEN": token });
   for (const h of PASS_IN) { const v = request.headers.get(h); if (v) headers.set(h, v); }
@@ -22,7 +22,7 @@ export async function onRequest({ request }) {
 
   let res;
   try { res = await fetch(target, init); }
-  catch (e) { return fail(`تعذّر الوصول إلى خادم فليفرز من الـ Worker: ${e.message}`, 502); }
+  catch (e) { return fail([`تعذّر الوصول إلى خادم فليفرز من الـ Worker: ${e.message}`, `Could not reach the Flavours server from the Worker: ${e.message}`], 502); }
   const out = new Headers({ "cache-control": "no-store", "x-flavours-proxy": "1" });
   for (const h of PASS_OUT) { const v = res.headers.get(h); if (v) out.set(h, v); }
   return new Response(res.body, { status: res.status, headers: out });

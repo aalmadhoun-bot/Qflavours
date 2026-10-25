@@ -22,6 +22,13 @@
 - `worker/` الكود الوحيد الذي يعمل على الخادم: `index.js` (المدخل والتوجيه)، `middleware.js`، `api/*.js`، `auth.js`.
 - `wrangler.jsonc`: `run_worker_first` حتى تمر كل الطلبات بالـ Worker، وربط KV `USERS`. `.assetsignore` يمنع نشر `worker/` وملفات الإعداد كملفات عامة.
 
+## اللغة والشكل
+- عربي (افتراضي، RTL) وإنجليزي (LTR) عبر `js/i18n.js`: النص العربي في الـ HTML والإنجليزي في `data-en` (أو `data-en-ph` للـ placeholder و`data-en-title`)، وفي الكود `L("عربي", "English")`. ضع `data-en` فقط على عنصر لا يحتوي ids أو عناصر لها listeners؛ النص الذي يكتبه الكود (حالة الاتصال، النتيجة) يُرسم بـ `L()` ويُعاد رسمه على حدث `langchange`.
+- التبديل بدون إعادة تحميل (يبقى الاتصال بفليفرز)، والاختيار في `localStorage` باسم `qf_lang`؛ سطر inline في `<head>` يضبط `dir` قبل الرسم.
+- رسائل الـ Worker: `fail(["عربي", "English"])` → `{ error, error_en }`، والواجهة تختار بـ `errorText()`.
+- القالب الجاهز للحساب بالإنجليزي: ورقة Instructions وتعليقات الأعمدة من `EN_INSTRUCTIONS`/`EN_NOTES` في `js/template.js`؛ أسماء الأوراق والأعمدة لا تتغير.
+- الشكل مثل qflavours.qoyod.com: خط Montserrat Arabic (في `fonts/`، مسموح بدون دخول)، الأزرق `#2900ee`، النص `#0e072f`، الخلفية `#f2f2f4`، زوايا 16px. المتغيرات في أول `css/app.css`؛ استخدم خصائص logical (inline-start…) حتى يعمل الاتجاهان.
+
 ## تسجيل الدخول والمستخدمين
 - `worker/middleware.js` يحمي كل الطلبات؛ المسموح بدون دخول: `/login`, `/js/login.js`, `/css/app.css`, `/api/login` (لذلك `login.js` لا يستورد أي ملف آخر).
 - **قرار المستخدم: الدخول مبدئياً بالبريد فقط بدون كلمة مرور.** نسخة كلمات المرور (PBKDF2، تغيير كلمة المرور، `ADMIN_PASSWORD`) في commit `b2af000` لإرجاعها لاحقاً.
