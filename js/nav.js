@@ -7,7 +7,7 @@ const LINKS = [
   ["upload", "/#step-2", "📄", ["2. القالب", "2. Template"]],
   ["upload", "/#step-3", "⬆️", ["3. الرفع", "3. Upload"]],
   ["upload", "/#log-card", "📜", ["السجل", "Log"]],
-  ["delete", "/delete", "🗑️", ["حذف المنتجات", "Delete products"], true],
+  ["delete", "/delete", "🗑️", ["حذف البيانات", "Delete data"], true],
   ["activity", "/activity", "📊", ["تقرير الاستخدام", "Usage report"], true],
   ["users", "/users", "👥", ["المستخدمون", "Users"], true],
 ];
@@ -59,8 +59,22 @@ export function askConfirm(message, { ok = L("متابعة", "Continue"), danger
   btn.className = danger ? "danger-solid" : "";
   dlg.returnValue = "";
   dlg.showModal();
-  dlg.querySelector('button[value="cancel"]').focus();
-  return new Promise((resolve) => dlg.addEventListener("close", () => resolve(dlg.returnValue === "ok"), { once: true }));
+  const cancel = dlg.querySelector("#confirmCancel");
+  cancel.focus();
+  // The buttons answer directly; "close" only covers Escape. (A dialog's close event is a queued task,
+  // which a background tab may hold back, so it can't be the only signal.)
+  return new Promise((resolve) => {
+    const done = (answer) => {
+      dlg.removeEventListener("close", onClose);
+      btn.onclick = cancel.onclick = null;
+      if (dlg.open) dlg.close();
+      resolve(answer);
+    };
+    const onClose = () => done(false);
+    dlg.addEventListener("close", onClose);
+    btn.onclick = (e) => { e.preventDefault(); done(true); };
+    cancel.onclick = (e) => { e.preventDefault(); done(false); };
+  });
 }
 
 // Renders the bar synchronously (again on every language change), then resolves with the signed-in user.

@@ -264,6 +264,54 @@ export class Client {
   createProduct(body) { return this.request("POST", "products", { body, version: PRODUCT_API_VERSION, retries: 1 }).then((p) => p?.data ?? p); }
   updateProduct(id, body) { return this.request("POST", `products/${id}`, { body, version: PRODUCT_API_VERSION, retries: 1 }).then((p) => p?.data ?? p); }
   deleteProduct(id) { return this.request("DELETE", `products/${id}`, { version: PRODUCT_API_VERSION, retries: 1 }); }
+
+  // Inventory → Ingredients / Recipes, as raw API items (ingredients() above is normalized for the upload).
+  inventoryIngredients(marketId) { return this.list("ingredients", { "filter[market_id]": marketId }); }
+  deleteIngredient(id) { return this.request("DELETE", `ingredients/${id}`, { retries: 1 }); }
+  async inventoryRecipes(marketId) {
+    try { return await this.list("recipes", { "filter[market_id]": marketId, "includes[]": ["ingredients"] }); }
+    catch { return this.list("recipes", { "filter[market_id]": marketId }); }
+  }
+  deleteRecipe(id) { return this.request("DELETE", `recipes/${id}`, { retries: 1 }); }
+
+  // Unlinks every ingredient from a product's options and keeps everything else. There is no endpoint for
+  // just the recipe, so this does what the web app's product edit screen does: load the product with
+  // PRODUCT_EDIT_INCLUDES, rebuild its update body the same way (productEditBody) and send it back.
+  // Returns { before, after } bodies: before is the untouched product, for the backup/report.
+  async clearProductRecipe(id, marketId) {
+    const p = await this.request("GET", `products/${id}`, { params: { "includes[]": PRODUCT_EDIT_INCLUDES }, version: PRODUCT_API_VERSION, retries: 1 });
+    const product = p?.data ?? p;
+    const body = productEditBody(product, marketId, { clearIngredients: true });
+    await this.request("POST", `products/${id}`, { body, version: PRODUCT_API_VERSION, retries: 1 });
+    return { before: product, after: body };
+  }
+}
+
+// What the web app loads before editing a product (product-upsert route, "Ai").
+export const PRODUCT_EDIT_INCLUDES = ["options", "options.prices", "options.ingredients.ingredient", "exclusions"];
+const isBlank = (v) => v === null || v === undefined || v === "";
+const num = (v) => (isBlank(v) ? v : Number(v));
+
+// The update body the web app sends for a loaded product (its form state on submit): same fields, an option's
+// price is its tax-inclusive total when is_tax_included, app prices as numbers, ingredients as {ingredient_id, qty},
+// the options also sent as `modifiers`, excluded order types as both excluded_order_types and exclusions.
+export function productEditBody(p, marketId, { clearIngredients = false } = {}) {
+  const options = (p.options || p.modifiers || []).map((o) => ({
+    ...o,
+    price: o.is_tax_included && !isBlank(o.total) ? num(o.total) : num(o.price),
+    cost: isBlank(o.cost) ? "" : num(o.cost),
+    ingredients: clearIngredients ? [] : (o.ingredients || []).map((i) => ({ ingredient_id: i.ingredient_id ?? i.ingredient?.id, qty: num(i.qty) })),
+    prices: (o.prices || []).map((x) => ({ ...x, value: num(x.value) })),
+  }));
+  const excluded = (p.exclusions || []).map((e) => e?.type_key ?? e).filter((k) => !isBlank(k));
+  const body = {
+    branch_id: p.branch_id, name_en: p.name_en, name_ar: p.name_ar,
+    category_id: p.category_id ?? p.product_category_id ?? p.category?.id, duration: p.duration,
+    description_en: p.description_en, description_ar: p.description_ar, images: p.images,
+    min_additionals: p.min_additionals, max_additionals: p.max_additionals,
+    market_id: marketId ?? p.market_id, options, modifiers: options, excluded_order_types: excluded, exclusions: excluded,
+  };
+  return Object.fromEntries(Object.entries(body).filter(([, v]) => !isBlank(v)));
 }
 
 function normIngredient(o) {

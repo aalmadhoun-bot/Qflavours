@@ -145,3 +145,10 @@ tr.clickable:hover td{background:#f8f8fa}
 tr.picked td{background:var(--pri-50)}
 main>*,#page>*{min-width:0}  /* wide tables scroll inside their card instead of widening the page */
 .num-table .bad-n{color:var(--bad);font-size:12px;margin-inline-start:6px}
+
+/* Tabs (delete page: products / ingredients / recipes) */
+.tabs{display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid var(--line);margin:-4px 0 18px;padding-bottom:12px}
+.tabs button{background:#f8f8fa;color:var(--label);min-height:40px;padding:0 16px;border-radius:999px;font-size:14px}
+.tabs button:hover:not(:disabled){background:var(--pri-50);color:var(--pri)}
+.tabs button[aria-selected=true]{background:var(--pri);color:#fff}
+.tabs button[aria-selected=true]:hover:not(:disabled){background:var(--pri-hover);color:#fff}

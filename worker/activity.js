@@ -11,6 +11,7 @@ export const ACTIONS = {
   dry_run: ["ready", "errors", "warnings"],
   upload: ["ready", "ok", "failed", "errors"],
   delete: ["total", "deleted", "failed"],
+  clear_recipe: ["total", "cleared", "failed"],
   template: [],
   reference: [],
   report: [],
@@ -30,6 +31,8 @@ export function cleanEvent(email, action, input = {}) {
   if (market) ev.m = market;
   const page = short(input.page, 12);
   if (page) ev.p = page;
+  const kind = short(input.kind, 12);  // what a delete/backup worked on: products | ingredients | recipes
+  if (kind) ev.k = kind;
   for (const f of ACTIONS[action] || []) { const c = count(input[f]); if (c !== undefined) ev[f] = c; }
   return ev;
 }

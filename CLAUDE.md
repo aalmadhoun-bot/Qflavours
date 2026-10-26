@@ -18,6 +18,9 @@
 - `templates/` قوالب Excel (الأوراق: Products, Modifiers, Recipes, Delivery_Prices, Price_Rules, Ingredients_Map).
 - `css/app.css` تنسيق مشترك — `js/nav.js` الشريط الجانبي الأيمن (`.sidenav`، شريط علوي تحت 860px) ودالة `api()` و`askConfirm()` — `img/` الشعار والأيقونة (مسموحان بدون دخول في `worker/middleware.js` لصفحة الدخول) — `login.html`/`js/login.js` — `users.html`/`js/users.js`.
 - `delete.html`/`js/delete.js` تبويب حذف المنتجات (مديرون فقط في الواجهة؛ الصلاحية الفعلية هي مفتاح فليفرز). تأكيد بكتابة "احذف" أو "احذف الكل" ثم confirm، حذف متتابع قابل للإيقاف، وتقرير Excel. `saveXlsx`/`stamp` في `js/excel.js` مشتركة مع `app.js`.
+- صفحة الحذف (`delete.html`/`js/delete.js`) بثلاثة تبويبات عبر `KINDS`: المنتجات، المواد الخام (`GET/DELETE /ingredients`)، الوصفات في المخزون (`GET/DELETE /recipes`، قسم Inventory → Recipes في فليفرز). المادة المستخدمة قد يرفضها الخادم بـ 422.
+- مسح وصفة منتج (`Client.clearProductRecipe`): لا يوجد endpoint للوصفة وحدها، فيُحمَّل المنتج بـ `PRODUCT_EDIT_INCLUDES` ويُعاد إرساله بـ `productEditBody` (نفس ما يرسله شاشة تعديل المنتج في موقع فليفرز: سعر الخيار = total إذا كان شاملاً للضريبة، options = modifiers، الاستثناءات في excluded_order_types وexclusions) مع `ingredients: []`. التقرير يحفظ ما فُك ربطه لكل خيار.
+- `askConfirm` يجيب من ضغطة الزر مباشرة؛ حدث `close` للـ Escape فقط (التبويب في الخلفية يؤخر الحدث).
 - حذف المنتج: `DELETE /products/{id}` (X-API-Version 2.5.0) — سلوك الخادم (حذف/أرشفة/رفض لمنتج مرتبط بطلبات) غير موثق؛ 404 يُعامل كـ "غير موجود".
 - `worker/` الكود الوحيد الذي يعمل على الخادم: `index.js` (المدخل والتوجيه)، `middleware.js`، `api/*.js`، `auth.js`.
 - `wrangler.jsonc`: `run_worker_first` حتى تمر كل الطلبات بالـ Worker، وربط KV `USERS`. `.assetsignore` يمنع نشر `worker/` وملفات الإعداد كملفات عامة.

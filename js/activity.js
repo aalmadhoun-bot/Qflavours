@@ -9,9 +9,10 @@ const DAY = 86400e3;
 const DOWNLOADS = new Set(["template", "reference", "report", "backup", "delete_report"]);
 const ACTION_NAMES = {
   login: ["تسجيل دخول", "Sign-in"], connect: ["اتصال بحساب", "Account connection"],
-  dry_run: ["فحص فقط", "Dry run"], upload: ["رفع فعلي", "Live upload"], delete: ["حذف منتجات", "Product deletion"],
+  dry_run: ["فحص فقط", "Dry run"], upload: ["رفع فعلي", "Live upload"], delete: ["حذف", "Deletion"],
+  clear_recipe: ["مسح وصفة منتجات", "Product recipe clearing"],
   template: ["تحميل القالب الجاهز", "Account template download"], reference: ["تصدير البيانات المرجعية", "Reference data export"],
-  report: ["تحميل تقرير الرفع", "Upload report download"], backup: ["نسخة احتياطية للمنتجات", "Products backup"],
+  report: ["تحميل تقرير الرفع", "Upload report download"], backup: ["نسخة احتياطية", "Backup"],
   delete_report: ["تحميل تقرير الحذف", "Deletion report download"],
 };
 const state = { data: null, who: "" };
@@ -19,6 +20,10 @@ const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "
 const locale = () => (lang === "en" ? "en-GB" : "ar-SA-u-nu-latn");
 const fmtTime = (t) => new Date(t).toLocaleString(locale(), { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 const actionName = (a) => (ACTION_NAMES[a] ? L(...ACTION_NAMES[a]) : a);
+const KIND_NAMES = { products: ["منتجات", "products"], ingredients: ["مواد خام", "ingredients"], recipes: ["وصفات", "recipes"] };
+const kindName = (k) => L(...(KIND_NAMES[k] || KIND_NAMES.products));
+// Deletions logged before kinds existed were all products.
+const isProducts = (ev) => !ev.k || ev.k === "products";
 const isoDay = (t) => new Date(t - new Date(t).getTimezoneOffset() * 60e3).toISOString().slice(0, 10);
 
 // What one event says beyond its type, e.g. "12 ok, 1 failed".
@@ -27,8 +32,9 @@ function details(ev) {
   switch (ev.a) {
     case "dry_run": return L(`جاهز ${n("ready")} — أخطاء ${n("errors")} — تحذيرات ${n("warnings")}`, `${n("ready")} ready — ${n("errors")} errors — ${n("warnings")} warnings`);
     case "upload": return L(`نجح ${n("ok")} — فشل ${n("failed")} من ${n("ready")}`, `${n("ok")} ok — ${n("failed")} failed of ${n("ready")}`);
-    case "delete": return L(`حُذف ${n("deleted")} — فشل ${n("failed")} من ${n("total")}`, `${n("deleted")} deleted — ${n("failed")} failed of ${n("total")}`);
-    case "backup": return L(`${n("products")} منتج`, `${n("products")} products`);
+    case "delete": return L(`${kindName(ev.k)}: حُذف ${n("deleted")} — فشل ${n("failed")} من ${n("total")}`, `${kindName(ev.k)}: ${n("deleted")} deleted — ${n("failed")} failed of ${n("total")}`);
+    case "clear_recipe": return L(`مُسحت وصفة ${n("cleared")} — فشل ${n("failed")} من ${n("total")}`, `${n("cleared")} cleared — ${n("failed")} failed of ${n("total")}`);
+    case "backup": return L(`${kindName(ev.k)}: ${n("products")}`, `${kindName(ev.k)}: ${n("products")}`);
     case "connect": return ev.p === "delete" ? L("من صفحة الحذف", "from the delete page") : "";
     default: return "";
   }
@@ -52,7 +58,8 @@ function summarize(events, users) {
     const r = rows.get(ev.e);
     if (ev.a in r) r[ev.a]++;
     if (ev.a === "upload") { r.uploaded += ev.ok ?? 0; r.upFailed += ev.failed ?? 0; }
-    if (ev.a === "delete") { r.deleted += ev.deleted ?? 0; r.delFailed += ev.failed ?? 0; }
+    if (ev.a === "clear_recipe") r.delete++;  // counted with the deletions; the details say which
+    if (ev.a === "delete" && isProducts(ev)) { r.deleted += ev.deleted ?? 0; r.delFailed += ev.failed ?? 0; }
     if (DOWNLOADS.has(ev.a)) r.downloads++;
     if (ev.m) r.markets.add(ev.m);
     r.last = Math.max(r.last, ev.t);
@@ -63,7 +70,7 @@ function summarize(events, users) {
 const COLUMNS = () => [
   ["user", L("المستخدم", "User")], ["login", L("دخول", "Sign-ins")], ["connect", L("اتصالات", "Connections")],
   ["dry_run", L("فحص", "Dry runs")], ["upload", L("رفع فعلي", "Live uploads")], ["uploaded", L("منتجات رُفعت", "Products uploaded")],
-  ["delete", L("عمليات حذف", "Deletions")], ["deleted", L("منتجات حُذفت", "Products deleted")],
+  ["delete", L("عمليات حذف ومسح", "Deletions & clears")], ["deleted", L("منتجات حُذفت", "Products deleted")],
   ["downloads", L("تحميلات", "Downloads")], ["markets", L("الحسابات (Market)", "Accounts (Market)")], ["last", L("آخر نشاط", "Last activity")],
 ];
 const userLabel = (u) => (u.removed ? `${u.email} ${L("(محذوف)", "(removed)")}` : displayName(u));
