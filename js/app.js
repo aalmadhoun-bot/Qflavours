@@ -5,7 +5,7 @@ import { askConfirm, mountNav, track } from "./nav.js";
 import { accountTemplate } from "./template.js";
 import { L } from "./i18n.js";
 
-export const VERSION = "2.8.0";
+export const VERSION = "2.9.0";
 const $ = (id) => document.getElementById(id);
 // conn: "idle" | "connecting" | "ok" | "error" (with connError); summary: last run, so both re-render in the other language
 const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null, step: 1,
