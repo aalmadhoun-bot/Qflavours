@@ -1,7 +1,7 @@
 import { L } from "./i18n.js";
 
 // Read the filled template and write report / reference workbooks (uses ExcelJS, loaded globally).
-const SHEETS = ["Products", "Modifiers", "Recipes", "Delivery_Prices", "Price_Rules", "Ingredients_Map"];
+const SHEETS = ["Products", "Modifiers", "Recipes", "Delivery_Prices", "Price_Rules", "Ingredients_Map", "Ingredients"];
 
 const X = () => globalThis.ExcelJS;
 

@@ -5,6 +5,7 @@
 // SheetJS reads the stock file. In English the instructions and notes come from the EN_* tables below
 // (translations of the stock file's Arabic); sheet and column names never change, the upload relies on them.
 import { L, lang } from "./i18n.js";
+import { INGREDIENT_UNITS } from "./builder.js";
 
 const SOURCE = "templates/flavours_template_empty.xlsx";
 const FIXED_PRICE_COLS = ["product_code", "modifier_name_en"];
@@ -25,7 +26,7 @@ const EN_INSTRUCTIONS = [
   "• Red columns are required. Don't rename the columns in the first row.",
   "• A category that doesn't exist in Flavours is created automatically (you can put its Arabic name in category_ar).",
   "• No product or option is uploaded without a price or with a price of 0 — the price must be greater than 0.",
-  "• Ingredients must already exist in Flavours — use (Export reference data) to see their names and IDs.",
+  "• A recipe ingredient must exist in Flavours or be listed in the Ingredients sheet (created on upload) — use (Export reference data) to see the existing ones.",
   "• A product with the same English name is updated (depending on the chosen mode); otherwise a new one is created.",
   "• Run (Dry run) before the live upload.",
 ];
@@ -72,6 +73,29 @@ const EN_NOTES = {
   "Ingredients_Map.ingredient_id": "The ingredient's ID in Flavours — used if the tool can't fetch it automatically",
 };
 
+// Ingredients sheet (not in the stock template): new ingredients the upload creates before the products.
+const INGREDIENT_COLS = ["name_en", "name_ar", "storage_unit", "recipe_unit", "storage_ratio", "recipe_ratio", "stock", "cost", "minimum", "maximum"];
+const INGREDIENT_NOTES = {
+  name_en: ["اسم المادة الخام بالإنجليزي (إلزامي) — الاسم الموجود مسبقاً في فليفرز يُتخطى", "Ingredient name in English (required) — a name that already exists in Flavours is skipped"],
+  name_ar: ["الاسم بالعربي — يمكن استخدامه في ورقة Recipes", "Name in Arabic — can be used in the Recipes sheet"],
+  storage_unit: ["وحدة التخزين/الشراء (فارغ = kg)", "Storage/purchase unit (empty = kg)"],
+  recipe_unit: ["وحدة الوصفة: الكمية في ورقة Recipes بهذه الوحدة (فارغ = g)", "Recipe unit: the qty in the Recipes sheet is in this unit (empty = g)"],
+  storage_ratio: ["عدد وحدات التخزين في التحويل (فارغ = 1)", "Number of storage units in the conversion (empty = 1)"],
+  recipe_ratio: ["كم وحدة وصفة تساوي storage_ratio من وحدة التخزين، مثل 1 kg = 1000 g — فارغ = يُحسب تلقائياً للوحدات المعروفة", "How many recipe units equal storage_ratio storage units, e.g. 1 kg = 1000 g — empty = worked out for known units"],
+  stock: ["المخزون الحالي بوحدة التخزين (فارغ = 0)", "Current stock in the storage unit (empty = 0)"],
+  cost: ["التكلفة (اختياري)", "Cost (optional)"],
+  minimum: ["الحد الأدنى للمخزون (اختياري)", "Minimum stock (optional)"],
+  maximum: ["الحد الأعلى للمخزون (اختياري)", "Maximum stock (optional)"],
+};
+
+function addIngredientsSheet(wb) {
+  const notes = Object.fromEntries(Object.entries(INGREDIENT_NOTES).map(([k, [ar, en]]) => [k, L(ar, en)]));
+  const ws = addTable(wb, "Ingredients", INGREDIENT_COLS, notes);
+  ws.getRow(1).getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC00000" } };  // required
+  const units = { type: "list", allowBlank: true, formulae: [`"${INGREDIENT_UNITS.join(",")}"`] };
+  for (let r = 2; r <= 500; r++) for (const c of ["C", "D"]) ws.getCell(`${c}${r}`).dataValidation = units;
+}
+
 function styleHeader(ws) {
   const head = ws.getRow(1);
   head.font = { bold: true, color: { argb: "FFFFFFFF" } };
@@ -112,6 +136,8 @@ export async function accountTemplate(ctx) {
         "The same apps are the columns of the Delivery_Prices sheet (optional) and the Price_Rules keys; the full list is in the Order_Types sheet.")]);
       out.addRow([L("لإضافة تطبيق غير مسجّل أضف عموداً باسمه (مثل HUNGERSTATION)؛ ستفعّله الأداة أو تنشئه في حسابك عند الرفع الفعلي.",
         "To add an app that isn't registered, add a column with its name (e.g. HUNGERSTATION); the tool enables or creates it in your account on a live upload.")]);
+      out.addRow([L("مواد خام جديدة: اكتبها في ورقة Ingredients (الاسم، وحدة التخزين ووحدة الوصفة، المخزون…) — تُنشأ في فليفرز قبل المنتجات، ويمكن استخدام اسمها مباشرة في ورقة Recipes. الأسماء الموجودة مسبقاً تُتخطى.",
+        "New ingredients: list them in the Ingredients sheet (name, storage and recipe units, stock…) — they are created in Flavours before the products, and their names can be used directly in the Recipes sheet. Existing names are skipped.")]);
       out.getRow(1).font = { bold: true, size: 13 };
       continue;
     }
@@ -147,7 +173,9 @@ export async function accountTemplate(ctx) {
     } else {
       addTable(wb, name, header, notes);
     }
+    if (name === "Recipes") addIngredientsSheet(wb);
   }
+  if (!wb.getWorksheet("Ingredients")) addIngredientsSheet(wb);
 
   const status = (t) => (t.active === false ? L("معطّل", "Disabled") : t.adopted === false ? L("غير مسجّل", "Not registered") : L("مفعّل", "Active"));
   const H = { key: L("المفتاح (key)", "Key"), ar: L("الاسم بالعربي", "Arabic name"), en: L("الاسم بالإنجليزي", "English name"),

@@ -55,7 +55,7 @@
 - التصنيفات: `GET /product-categories?filter[scope]=MANAGE&filter[market_id]=…` و `POST /product-categories {name_en, name_ar, icon}` مع `X-API-Version: 2.8.0`. الاسم المكرر → 422 "already exists" (ابحث عنه واربط به).
 - أنواع الطلب: `GET /orders/types?includes[]=config` = كل الأنواع التي يعرفها فليفرز، و`is_adopted` + `config.is_active` = المسجّل/المفعّل في الحساب (الإعدادات ← أنواع الطلب). `client.orderTypes()` يرجع المسجّلة فقط؛ `orderTypeCatalog()` الكل.
 - إنشاء/تفعيل نوع طلب: `POST /orders/types/configs` مع `{type_key}` لتفعيل نوع معروف أو `{name_en, name_ar}` لنوع جديد، وبقية الحقول بقيم نموذج موقع فليفرز (`ORDER_TYPE_DEFAULTS` في `js/api.js`).
-- المواد الخام: `GET /ingredients`.
+- المواد الخام: `GET /ingredients`، والإنشاء `POST /ingredients` بنفس نموذج موقع فليفرز: `{name_en, name_ar, source_unit, target_unit, source_rate, target_rate, stock, cost, minimum, maximum, market_id, branch_id}` (الإلزامي: name_en، الوحدتان، النسبتان، stock). الوحدات في `INGREDIENT_UNITS` (`js/builder.js`).
 - المنتج: `POST /products` و `POST /products/{id}` مع `X-API-Version: 2.5.0`:
   - `name_en, name_ar, description_en/ar, category_id, duration, market_id, branch_id, options[]` (نفس القائمة تُرسل أيضاً في `modifiers`).
   - option: `name_en, name_ar, type, pricing_type(=type), price, cost, calorie, is_tax_included(1/0), has_weight, weight_amount, weight_unit, has_stock, stock, barcode, ingredients[{ingredient_id, qty}], prices[]`.
@@ -67,6 +67,7 @@
 - التطبيق/نوع الطلب غير المسجّل في Delivery_Prices أو Price_Rules (صف فيه قاعدة) يُفعَّل إن كان معروفاً في فليفرز أو يُنشأ كنوع جديد، في الرفع الفعلي فقط وبعد التصنيفات (`planOrderTypes`/`createOrderTypes` في `js/uploader.js`؛ قابل للإيقاف). النوع الجديد يأخذ مفتاحاً مؤقتاً `NEW:…` حتى يُنشأ، وإن فشل تُحذف أسعاره فقط.
 - أسعار التطبيقات داخل Products / Modifiers: أي عمود غير الأعمدة العادية (`PRODUCT_COLS` / `MODIFIER_COLS` في `js/builder.js`) واسمه تطبيق مسجّل أو يعرفه فليفرز = سعر ذلك السطر في ذلك التطبيق (Products = كل المنتج، Modifiers = ذلك الخيار). يغلب Delivery_Prices لنفس الخيار مع تحذير. يُستخدم `knownPriceKey` (لا يثق بعنوان مجهول) حتى لا يتحول عمود ملاحظات إلى تطبيق؛ التطبيق الجديد كلياً يُنشأ فقط من عمود في Delivery_Prices.
 - "قالب جاهز لحسابي" (`js/template.js`): يُبنى من `flavours_template_empty.xlsx` بأعمدة أنواع الطلب المسجلة والمفعّلة + ورقة Order_Types. يُكتب بـ ExcelJS من الصفر لأن ExcelJS لا يقرأ القالب الأصلي (تعليقات الخلايا)؛ القراءة بـ SheetJS.
+- ورقة `Ingredients` (ليست في القوالب الثابتة، يضيفها "قالب جاهز لحسابي"): مواد خام جديدة تُنشأ في الرفع الفعلي بعد التصنيفات والتطبيقات وقبل المنتجات (`buildIngredients` في builder، `createIngredients` في uploader؛ قابل للإيقاف). الاسم الموجود في فليفرز أو Ingredients_Map يُتخطى بتحذير. وحدات عربية مقبولة (كجم، جرام، لتر، مل، حبة…)، الافتراضي kg → g، و`recipe_ratio` يُحسب للتحويلات المعروفة (kg→g = 1000…) وإلا يجب كتابته. الوصفة التي تذكر مادة جديدة تأخذ رقماً مؤقتاً `NEW-ING:<key>` يُستبدل بعد الإنشاء (أو بالبحث بالاسم إن لم يرجع الـ API الرقم)، وإن فشل إنشاؤها يفشل المنتج الذي يستخدمها. تقرير الرفع فيه ورقة Ingredients.
 - المنتج الموجود بنفس `name_en` يُحدَّث (وضع upsert افتراضياً).
 - أي خطأ في الملف يوقف الرفع الفعلي كله، إلا إذا فعّل المستخدم "ارفع المنتجات السليمة".
 - أعمدة Delivery_Prices/Price_Rules تُطابق مفتاح أو اسم نوع الطلب بعد التطبيع (HUNGERSTATION = HUNGER_STATION = HungerStation).

@@ -16,6 +16,26 @@ export const PRODUCT_COLS = new Set(["product_code", "name_en", "name_ar", "cate
   "calorie", "barcode", "is_tax_included", "description_en", "description_ar", "preparation_time", "stock", "branch_id", "_row"]);
 export const MODIFIER_COLS = new Set(["product_code", "modifier_name_en", "modifier_name_ar", "type", "price", "cost", "calorie",
   "barcode", "is_tax_included", "weight_amount", "weight_unit", "_row"]);
+// Units of an ingredient (Flavours' form): storage_unit = what it is bought/stocked in, recipe_unit = what recipes use.
+export const INGREDIENT_UNITS = ["kg", "g", "mg", "ton", "L", "mL", "piece", "unit", "box", "pack", "carton", "dozen", "set", "bundle",
+  "roll", "m", "cm", "mm", "m2", "m3", "pair", "bottle", "can", "bag", "sack", "pallet"];
+const UNIT_ALIASES = {
+  kilo: "kg", kilogram: "kg", kgs: "kg", "كجم": "kg", "كغ": "kg", "كيلو": "kg", "كيلوجرام": "kg", "كيلوغرام": "kg",
+  gram: "g", grams: "g", gm: "g", gr: "g", "جم": "g", "جرام": "g", "غرام": "g", "غ": "g",
+  "ملجم": "mg", "ملغ": "mg", "مليجرام": "mg", "طن": "ton",
+  liter: "L", litre: "L", ltr: "L", "لتر": "L", milliliter: "mL", millilitre: "mL", "مل": "mL", "ملل": "mL", "مليلتر": "mL",
+  pcs: "piece", pc: "piece", pieces: "piece", "حبه": "piece", "قطعه": "piece", "وحده": "unit", "صندوق": "box",
+  "باكيت": "pack", "عبوه": "pack", "كرتون": "carton", "كرتونه": "carton", "درزن": "dozen", "دزينه": "dozen", "طقم": "set",
+  "حزمه": "bundle", "رول": "roll", "لفه": "roll", "متر": "m", "سم": "cm", "ملم": "mm", "زوج": "pair",
+  "زجاجه": "bottle", "قاروره": "bottle", "علبه": "can", "كيس": "bag", "شوال": "sack", "طبليه": "pallet",
+};
+const UNIT_INDEX = new Map([...INGREDIENT_UNITS.map((u) => [u.toLowerCase(), u]), ...Object.entries(UNIT_ALIASES)]);
+const unitOf = (v) => UNIT_INDEX.get(norm(v)) ?? null;
+// recipe units per storage unit, for a recipe_ratio left empty (1 kg = 1000 g …)
+const CONVERT = { "kg>g": 1000, "kg>mg": 1e6, "g>mg": 1000, "ton>kg": 1000, "ton>g": 1e6, "L>mL": 1000,
+  "m>cm": 100, "m>mm": 1000, "cm>mm": 10, "dozen>piece": 12, "pair>piece": 2 };
+export const NEW_INGREDIENT = "NEW-ING:";  // placeholder ingredient_id until the ingredient is created (uploader)
+
 const extraCols = (r, regular) => Object.entries(r).filter(([col, val]) => !regular.has(col) && !isNil(val));
 
 const isNil = (v) => v === null || v === undefined;
@@ -64,8 +84,9 @@ const intLike = (v) => (isIntLike(v) ? parseInt(parseFloat(v), 10) : v);
 
 export class Context {
   constructor({ marketId = null, defaultBranchId = null, categories = [], ingredients = [],
-    orderTypes = [], orderTypeCatalog = null, createCategories = true, createOrderTypes = true } = {}) {
-    Object.assign(this, { marketId, defaultBranchId, categories, ingredients, orderTypes, orderTypeCatalog, createCategories, createOrderTypes });
+    orderTypes = [], orderTypeCatalog = null, createCategories = true, createOrderTypes = true, createIngredients = true } = {}) {
+    Object.assign(this, { marketId, defaultBranchId, categories, ingredients, orderTypes, orderTypeCatalog, createCategories, createOrderTypes, createIngredients });
+    this.pendingIngredients = {};  // Ingredients sheet rows this run will create: key -> POST /ingredients body (see buildPayloads)
     this.pendingCategories = {};
     this.pendingOrderTypes = [];  // apps named in the file that this run will register (see uploader.planOrderTypes)
     this.reindex();
@@ -108,6 +129,8 @@ export class Context {
     if (isNil(v)) return null;
     const hit = this._ing.get(norm(v));
     if (!isNil(hit)) return intLike(hit);
+    const key = this._newIng?.get(norm(v));
+    if (key) return NEW_INGREDIENT + key;
     return isIntLike(v) ? parseInt(parseFloat(v), 10) : null;
   }
 }
@@ -139,6 +162,7 @@ export function buildPayloads(sheets, ctx) {
   const codeOf = (r) => String(r.product_code ?? "").trim();
 
   ctx.addIngredientMap(S("Ingredients_Map"));
+  buildIngredients(S("Ingredients"), ctx, err, warn);
 
   // products
   const products = new Map();
@@ -238,7 +262,7 @@ export function buildPayloads(sheets, ctx) {
     const code = codeOf(r);
     if (!products.has(code)) { err("Recipes", r._row, code || null, L("product_code غير موجود في ورقة Products", "product_code not found in the Products sheet")); continue; }
     const iid = ctx.ingredientId(r.ingredient);
-    if (iid === null) { err("Recipes", r._row, code, L(`المادة الخام غير معروفة: '${r.ingredient}' — أضفها في Ingredients_Map أو استخدم رقمها`, `Unknown ingredient: '${r.ingredient}' — add it to Ingredients_Map or use its ID`)); continue; }
+    if (iid === null) { err("Recipes", r._row, code, L(`المادة الخام غير معروفة: '${r.ingredient}' — أضفها في ورقة Ingredients لتُنشأ، أو في Ingredients_Map مع رقمها`, `Unknown ingredient: '${r.ingredient}' — add it to the Ingredients sheet to create it, or to Ingredients_Map with its ID`)); continue; }
     let qty;
     try { qty = toNum(r.qty); } catch (e) { err("Recipes", r._row, code, e.message); continue; }
     if (!qty || qty <= 0) { err("Recipes", r._row, code, L("الكمية يجب أن تكون أكبر من صفر", "Quantity must be greater than zero")); continue; }
@@ -366,6 +390,63 @@ export function buildPayloads(sheets, ctx) {
   // any error for a product blocks that product (never upload a partial menu item)
   const bad = new Set(issues.filter((i) => i.level === "ERROR").map((i) => i.product_code));
   return { built: built.filter((b) => !bad.has(b.code)), issues };
+}
+
+// Ingredients sheet: new ingredients, created before the products so their recipes can use them.
+// A name that already exists in Flavours (or in Ingredients_Map) is skipped; a recipe naming a new one gets a
+// placeholder id (NEW_INGREDIENT + key) that the uploader swaps for the real id once it is created.
+function buildIngredients(rows, ctx, err, warn) {
+  ctx.pendingIngredients = {};
+  ctx._newIng = new Map();
+  const seen = new Set();
+  for (const r of rows) {
+    const en = isNil(r.name_en) ? "" : String(r.name_en).trim();
+    const ar = isNil(r.name_ar) ? "" : String(r.name_ar).trim();
+    if (!en && !ar) { err("Ingredients", r._row, null, L("اسم المادة الخام فارغ", "Ingredient name is empty")); continue; }
+    const label = en || ar;
+    const fail = (ar_, en_) => err("Ingredients", r._row, null, L(`${label}: ${ar_}`, `${label}: ${en_}`));
+    if (!en) { fail("name_en إلزامي", "name_en is required"); continue; }
+    const names = [...new Set([en, ar].filter(Boolean).map(norm))];
+    if (names.some((k) => seen.has(k))) { fail("الاسم مكرر في ورقة Ingredients", "duplicate name in the Ingredients sheet"); continue; }
+    names.forEach((k) => seen.add(k));
+    if (names.some((k) => ctx._ing.has(k))) {
+      warn("Ingredients", r._row, null, L(`${label}: موجودة مسبقاً في فليفرز — لن تُنشأ`, `${label}: already exists in Flavours — it won't be created`));
+      continue;
+    }
+    if (!ctx.createIngredients) continue;  // a recipe naming it then reports it as unknown
+
+    const unit = (col, dflt) => {
+      if (isNil(r[col]) || r[col] === "") return dflt;
+      const u = unitOf(r[col]);
+      if (!u) fail(`${col} غير معروفة: '${r[col]}' (المسموح: ${INGREDIENT_UNITS.join(", ")})`, `unknown ${col}: '${r[col]}' (allowed: ${INGREDIENT_UNITS.join(", ")})`);
+      return u;
+    };
+    const source = unit("storage_unit", "kg");
+    const target = unit("recipe_unit", "g");
+    if (!source || !target) continue;
+    const n = {};
+    let bad = false;
+    for (const col of ["storage_ratio", "recipe_ratio", "stock", "cost", "minimum", "maximum"]) {
+      try { n[col] = toNum(r[col]); } catch (e) { err("Ingredients", r._row, null, `${label}: ${col}: ${e.message}`); bad = true; continue; }
+      if (n[col] !== null && n[col] < 0) { fail(`${col} لا يقبل قيمة سالبة`, `${col} can't be negative`); bad = true; }
+    }
+    if (bad) continue;
+    const sRate = n.storage_ratio ?? 1;
+    const conv = source === target ? 1 : CONVERT[`${source}>${target}`];
+    const tRate = n.recipe_ratio ?? (conv ? conv * sRate : null);
+    if (tRate === null) { fail(`اكتب recipe_ratio: كم ${target} في ${sRate} ${source}`, `enter recipe_ratio: how many ${target} are in ${sRate} ${source}`); continue; }
+    if (sRate <= 0 || tRate <= 0) { fail("storage_ratio و recipe_ratio يجب أن تكون أكبر من صفر", "storage_ratio and recipe_ratio must be greater than zero"); continue; }
+    if (n.minimum !== null && n.maximum !== null && n.minimum > n.maximum) { fail("minimum أكبر من maximum", "minimum is greater than maximum"); continue; }
+
+    const key = names[0];
+    ctx.pendingIngredients[key] = Object.fromEntries(Object.entries({
+      name_en: en, name_ar: ar || en, source_unit: source, target_unit: target,
+      source_rate: cleanNum(sRate), target_rate: cleanNum(tRate), stock: cleanNum(n.stock ?? 0),
+      cost: cleanNum(n.cost), minimum: cleanNum(n.minimum), maximum: cleanNum(n.maximum),
+      market_id: ctx.marketId, branch_id: ctx.defaultBranchId,
+    }).filter(([, v]) => v !== null && v !== undefined));
+    names.forEach((k) => ctx._newIng.set(k, key));
+  }
 }
 
 function mergeIngredients(items) {
