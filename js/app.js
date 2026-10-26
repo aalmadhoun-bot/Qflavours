@@ -5,7 +5,7 @@ import { askConfirm, mountNav, track } from "./nav.js";
 import { accountTemplate } from "./template.js";
 import { L } from "./i18n.js";
 
-export const VERSION = "2.10.0";
+export const VERSION = "2.11.0";
 const $ = (id) => document.getElementById(id);
 // conn: "idle" | "connecting" | "ok" | "error" (with connError); summary: last run, so both re-render in the other language
 const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null, step: 1,
@@ -86,13 +86,30 @@ function init() {
   $("confirm").onchange = refresh;
   refresh();
   showStep(stepFromHash() ?? 1);
-  addEventListener("langchange", () => { renderModes(); renderConn(); renderResult(); });
+  $("ingBranch").onchange = () => {
+    if (!state.ctx) return;
+    state.ctx.ingredientBranchId = $("ingBranch").value || null;
+    store.set(`flv_branch_${state.ctx.marketId}`, state.ctx.ingredientBranchId);
+  };
+  addEventListener("langchange", () => { renderModes(); renderConn(); renderResult(); renderBranches(); });
 }
 
 function renderModes() {
   const current = document.querySelector("input[name=mode]:checked")?.value;
   $("modes").innerHTML = Object.entries(MODES).map(([k, [ar, en]], i) =>
     `<label><input type="radio" name="mode" value="${k}" ${(current ? k === current : !i) ? "checked" : ""}> ${L(ar, en)}</label>`).join("");
+}
+
+// Branch for new ingredients: the account's branches, preselected from the connect form, the only branch,
+// or the last choice for this market.
+function renderBranches() {
+  const ctx = state.ctx, sel = $("ingBranch");
+  if (!ctx) { sel.innerHTML = ""; return; }
+  const cur = ctx.ingredientBranchId === null || ctx.ingredientBranchId === undefined ? "" : String(ctx.ingredientBranchId);
+  const opts = ctx.branches.map((b) => [String(b.id), `${L(b.name_ar || b.name_en, b.name_en || b.name_ar) || "-"} (${b.id})`]);
+  if (cur && !opts.some(([v]) => v === cur)) opts.push([cur, cur]);  // branch list unavailable: keep the typed id
+  sel.innerHTML = [["", L("— اختر الفرع —", "— Choose the branch —")], ...opts]
+    .map(([v, t]) => `<option value="${v}"${v === cur ? " selected" : ""}>${t.replace(/</g, "&lt;")}</option>`).join("");
 }
 
 function renderConn() {
@@ -135,8 +152,11 @@ $("btnConnect").onclick = () => busy(async () => {
   try {
     const { client, me } = await connect(token, base, log);
     const ctx = await loadContext(client, me, { marketId: $("market").value.trim(), branchId: $("branch").value.trim() }, log);
+    const saved = store.get(`flv_branch_${ctx.marketId}`);
+    if (!ctx.ingredientBranchId && saved && (!ctx.branches.length || ctx.branchId(saved) !== null)) ctx.ingredientBranchId = saved;
     Object.assign(state, { client, ctx, conn: "ok" });
     renderConn();
+    renderBranches();
     log(L("✅ تم الاتصال وتحميل البيانات المرجعية", "✅ Connected and reference data loaded"));
     track("connect", { market: ctx.marketId, page: "upload" });
     setTimeout(() => { if (state.step === 1 && state.ctx === ctx) goStep(2); }, 900);  // let the success show, then move on
@@ -193,6 +213,7 @@ async function run(live) {
     state.ctx.createCategories = $("createCats").checked;
     state.ctx.createOrderTypes = $("createTypes").checked;
     state.ctx.createIngredients = $("createIngs").checked;
+    state.ctx.ingredientBranchId = $("ingBranch").value || null;
     try {
       const out = await upload(state.client, state.ctx, structuredClone(state.sheets), {
         mode: document.querySelector("input[name=mode]:checked").value,

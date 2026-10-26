@@ -84,8 +84,12 @@ const intLike = (v) => (isIntLike(v) ? parseInt(parseFloat(v), 10) : v);
 
 export class Context {
   constructor({ marketId = null, defaultBranchId = null, categories = [], ingredients = [],
-    orderTypes = [], orderTypeCatalog = null, createCategories = true, createOrderTypes = true, createIngredients = true } = {}) {
-    Object.assign(this, { marketId, defaultBranchId, categories, ingredients, orderTypes, orderTypeCatalog, createCategories, createOrderTypes, createIngredients });
+    orderTypes = [], orderTypeCatalog = null, createCategories = true, createOrderTypes = true, createIngredients = true,
+    branches = [], ingredientBranchId = null } = {}) {
+    // defaultBranchId: products without a branch_id of their own (connect form / user's branch; empty = none).
+    // ingredientBranchId: branch of the new ingredients (Flavours requires one), picked in the upload step.
+    Object.assign(this, { marketId, defaultBranchId, categories, ingredients, orderTypes, orderTypeCatalog, createCategories, createOrderTypes,
+      createIngredients, branches, ingredientBranchId });
     this.pendingIngredients = {};  // Ingredients sheet rows this run will create: key -> POST /ingredients body (see buildPayloads)
     this.pendingCategories = {};
     this.pendingOrderTypes = [];  // apps named in the file that this run will register (see uploader.planOrderTypes)
@@ -102,6 +106,8 @@ export class Context {
       for (const k of ["name_en", "name_ar"]) if (i[k] && !this._ing.has(norm(i[k]))) this._ing.set(norm(i[k]), i.id);
       if (!this._ing.has(norm(i.id))) this._ing.set(norm(i.id), i.id);
     }
+    this._branch = new Map();
+    for (const b of this.branches) for (const v of [b.id, b.name_en, b.name_ar]) if (!isNil(v) && !this._branch.has(norm(v))) this._branch.set(norm(v), b.id);
     this._price = new Map();
     for (const o of [...this.orderTypes, ...this.pendingOrderTypes]) {
       if (!o.key) continue;
@@ -124,6 +130,9 @@ export class Context {
   addIngredientMap(rows) {
     for (const r of rows) if (!isNil(r.ingredient_name) && !isNil(r.ingredient_id)) this._ing.set(norm(r.ingredient_name), intLike(r.ingredient_id));
   }
+  // A branch of this market by id or name; null when unknown. With no branch list loaded, nothing can be checked.
+  branchId(v) { return isNil(v) ? null : (this._branch.get(norm(v)) ?? null); }
+  branchList() { return this.branches.map((b) => `${b.id} (${L(b.name_ar || b.name_en, b.name_en || b.name_ar) || "-"})`).join(L("، ", ", ")); }
   categoryId(v) { return isNil(v) ? null : (this._cat.get(norm(v)) ?? null); }
   ingredientId(v) {
     if (isNil(v)) return null;
@@ -375,7 +384,12 @@ export function buildPayloads(sheets, ctx) {
       options.push(Object.fromEntries(Object.entries(o).filter(([, v]) => v !== null)));
     }
 
-    const branchId = p.branch_id || ctx.defaultBranchId || null;
+    let branchId = ctx.defaultBranchId || null;
+    if (!isNil(p.branch_id)) {
+      branchId = ctx.branches.length ? ctx.branchId(p.branch_id) : p.branch_id;
+      if (branchId === null) err("Products", row, code, L(`branch_id غير موجود في حسابك: '${p.branch_id}' — الفروع: ${ctx.branchList()}. اكتب رقم فرع صحيحاً أو اترك الخانة فارغة`,
+        `branch_id doesn't exist in your account: '${p.branch_id}' — branches: ${ctx.branchList()}. Enter a valid branch ID or leave the cell empty`));
+    }
     const prep = safeNum(p.preparation_time);
     const body = Object.fromEntries(Object.entries({
       market_id: ctx.marketId, branch_id: branchId,
@@ -443,9 +457,15 @@ function buildIngredients(rows, ctx, err, warn) {
       name_en: en, name_ar: ar || en, source_unit: source, target_unit: target,
       source_rate: cleanNum(sRate), target_rate: cleanNum(tRate), stock: cleanNum(n.stock ?? 0),
       cost: cleanNum(n.cost), minimum: cleanNum(n.minimum), maximum: cleanNum(n.maximum),
-      market_id: ctx.marketId, branch_id: ctx.defaultBranchId,
+      market_id: ctx.marketId, branch_id: ctx.branches.length ? ctx.branchId(ctx.ingredientBranchId) : ctx.ingredientBranchId,
     }).filter(([, v]) => v !== null && v !== undefined));
     names.forEach((k) => ctx._newIng.set(k, key));
+  }
+  // Flavours refuses an ingredient without a branch (HTTP 422 "The branch id field is required")
+  if (Object.keys(ctx.pendingIngredients).length) {
+    const b = ctx.ingredientBranchId;
+    if (isNil(b) || b === "") err("Ingredients", null, null, L("اختر «فرع المواد الخام الجديدة» في خطوة الرفع — فليفرز يشترط الفرع عند إنشاء مادة خام", "Choose the \"Branch for new ingredients\" in the upload step — Flavours requires a branch to create an ingredient"));
+    else if (ctx.branches.length && ctx.branchId(b) === null) err("Ingredients", null, null, L(`فرع المواد الخام '${b}' غير موجود في حسابك — الفروع: ${ctx.branchList()}`, `Ingredient branch '${b}' doesn't exist in your account — branches: ${ctx.branchList()}`));
   }
 }
 

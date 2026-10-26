@@ -241,6 +241,13 @@ export class Client {
     return [];
   }
 
+  // The market's branches (same request as the Flavours web app), as { id, name_en, name_ar }.
+  async branches(marketId) {
+    const items = await this.list("branches", { "filter[market_id]": marketId });
+    return items.filter((b) => b && b.id !== undefined && b.id !== null)
+      .map((b) => ({ id: b.id, name_en: b.name_en || b.name || null, name_ar: b.name_ar || null }));
+  }
+
   async products(marketId, includes) {
     const params = { "filter[market_id]": marketId };
     if (includes) params["includes[]"] = includes;

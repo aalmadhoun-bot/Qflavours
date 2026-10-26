@@ -28,14 +28,20 @@ export async function loadContext(client, me, { marketId, branchId } = {}, log) 
   branchId = branchId || Client.branchIdOf(me);
   if (!marketId) log(L("⚠️ لم يتم العثور على market_id — أدخله يدوياً", "⚠️ market_id not found — enter it manually"));
   log(`• Market: ${marketId}  • Branch: ${branchId || "-"}`);
-  const [categories, { orderTypes, catalog }, ingredients] = await Promise.all([
+  const [categories, { orderTypes, catalog }, ingredients, branches] = await Promise.all([
     client.categories(marketId), loadOrderTypes(client), client.ingredients(marketId),
+    client.branches(marketId).catch((e) => { log(L(`⚠️ تعذّر تحميل الفروع: ${e.message}`, `⚠️ Could not load the branches: ${e.message}`)); return []; }),
   ]);
   log(`• ${L("التصنيفات", "Categories")}: ${categories.length}`);
   const typeList = orderTypes.map((o) => o.key + (L(o.name_ar, o.name_en) ? ` (${L(o.name_ar, o.name_en)})` : "") + (o.adopted && !o.active ? L(" — معطّل", " — disabled") : ""));
   log(`• ${L("أنواع الطلب/التطبيقات المسجلة", "Registered order types/apps")}: ${typeList.join(L("، ", ", ")) || L("لا يوجد", "none")}`);
   log(`• ${L("المواد الخام المعروفة", "Known ingredients")}: ${ingredients.length}`);
-  return new Context({ marketId, defaultBranchId: branchId, categories, ingredients, orderTypes, orderTypeCatalog: catalog });
+  const ctx = new Context({ marketId, defaultBranchId: branchId, categories, ingredients, orderTypes, orderTypeCatalog: catalog, branches });
+  log(`• ${L("الفروع", "Branches")}: ${ctx.branchList() || L("لا يوجد", "none")}`);
+  if (branchId && branches.length && ctx.branchId(branchId) === null) log(L(`⚠️ رقم الفرع ${branchId} غير موجود في حسابك — المنتجات المرفوعة به سيرفضها فليفرز`, `⚠️ Branch ${branchId} doesn't exist in your account — Flavours will refuse products uploaded with it`));
+  const typed = branchId ? (branches.length ? ctx.branchId(branchId) : branchId) : null;
+  ctx.ingredientBranchId = typed ?? (branches.length === 1 ? branches[0].id : null);  // the only branch needs no choosing
+  return ctx;
 }
 
 async function loadOrderTypes(client) {
@@ -120,6 +126,7 @@ async function createIngredients(client, ctx, built, log) {
     const row = { name_en: spec.name_en, name_ar: spec.name_ar, storage_unit: spec.source_unit, recipe_unit: spec.target_unit,
       storage_ratio: spec.source_rate, recipe_ratio: spec.target_rate, stock: spec.stock, status: "", flavours_id: null, message: "" };
     try {
+      if (spec.branch_id === undefined) throw new Error(L("لم يُختر فرع للمواد الخام", "No branch chosen for the ingredients"));
       realId[key] = await client.createIngredient(spec);
       row.status = "OK";
       log(L(`🆕 تم إنشاء المادة الخام: ${spec.name_en} / ${spec.name_ar}`, `🆕 Created the ingredient: ${spec.name_en} / ${spec.name_ar}`));
