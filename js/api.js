@@ -266,6 +266,12 @@ export class Client {
   deleteProduct(id) { return this.request("DELETE", `products/${id}`, { version: PRODUCT_API_VERSION, retries: 1 }); }
 
   // Inventory → Ingredients / Recipes, as raw API items (ingredients() above is normalized for the upload).
+  // New ingredient (Inventory → Ingredients form): { name_en, name_ar, source_unit, target_unit, source_rate, target_rate,
+  // stock, cost, minimum, maximum, market_id, branch_id }. Resolves with its id when the API returns it.
+  async createIngredient(body) {
+    const p = await this.request("POST", "ingredients", { body, retries: 1 });
+    return (p?.data ?? p)?.id ?? null;
+  }
   inventoryIngredients(marketId) { return this.list("ingredients", { "filter[market_id]": marketId }); }
   deleteIngredient(id) { return this.request("DELETE", `ingredients/${id}`, { retries: 1 }); }
   async inventoryRecipes(marketId) {

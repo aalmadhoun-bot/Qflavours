@@ -1,6 +1,6 @@
 // Orchestrates: connect -> load reference data -> validate -> create categories and apps -> upload -> report.
 import { Client, ApiError } from "./api.js";
-import { Context, buildPayloads, keynorm, norm, priceColumnNames } from "./builder.js";
+import { Context, NEW_INGREDIENT, buildPayloads, keynorm, norm, priceColumnNames } from "./builder.js";
 import { L } from "./i18n.js";
 
 export const MODES = {
@@ -111,6 +111,57 @@ async function createOrderTypes(client, ctx, plan, built, log) {
   }
 }
 
+// Creates the Ingredients sheet's new ingredients, then swaps the recipes' placeholder ids for the real ones.
+// Returns a report row per ingredient and the failed ones (key -> message); a recipe still holding a placeholder
+// after this means its ingredient failed, and the uploader fails that product.
+async function createIngredients(client, ctx, built, log) {
+  const rows = [], failed = {}, realId = {};
+  for (const [key, spec] of Object.entries(ctx.pendingIngredients)) {
+    const row = { name_en: spec.name_en, name_ar: spec.name_ar, storage_unit: spec.source_unit, recipe_unit: spec.target_unit,
+      storage_ratio: spec.source_rate, recipe_ratio: spec.target_rate, stock: spec.stock, status: "", flavours_id: null, message: "" };
+    try {
+      realId[key] = await client.createIngredient(spec);
+      row.status = "OK";
+      log(L(`🆕 تم إنشاء المادة الخام: ${spec.name_en} / ${spec.name_ar}`, `🆕 Created the ingredient: ${spec.name_en} / ${spec.name_ar}`));
+    } catch (e) {
+      failed[key] = row.message = e.message;
+      row.status = "FAILED";
+      log(L(`❌ فشل إنشاء المادة الخام ${spec.name_en}: ${e.message}`, `❌ Could not create the ingredient ${spec.name_en}: ${e.message}`));
+    }
+    rows.push({ key, row });
+  }
+  // the API may not return the new id: look it up by name
+  if (rows.some(({ key, row }) => row.status === "OK" && isNil(realId[key]))) {
+    try {
+      ctx.ingredients = await client.ingredients(ctx.marketId);
+      ctx.reindex();
+      for (const { key, row } of rows) if (row.status === "OK" && isNil(realId[key])) realId[key] = ctx.ingredientId(row.name_en);
+    } catch (e) { log(L(`⚠️ تعذّر تحديث قائمة المواد الخام: ${e.message}`, `⚠️ Could not refresh the ingredient list: ${e.message}`)); }
+  }
+  for (const { key, row } of rows) {
+    if (row.status !== "OK") continue;
+    const id = realId[key];
+    if (isNil(id) || String(id).startsWith(NEW_INGREDIENT)) {
+      failed[key] = row.message = L("أُنشئت لكن تعذّر معرفة رقمها — لم تُربط بالوصفات", "Created, but its ID couldn't be found — not linked to recipes");
+      log(`⚠️ ${row.name_en}: ${row.message}`);
+    } else row.flavours_id = id;
+  }
+  for (const b of built) {
+    for (const o of b.body.options || []) {
+      for (const i of o.ingredients || []) {
+        const key = isPending(i.ingredient_id) ? i.ingredient_id.slice(NEW_INGREDIENT.length) : null;
+        if (key !== null && !(key in failed) && !isNil(realId[key])) i.ingredient_id = realId[key];
+      }
+    }
+  }
+  return { rows: rows.map((r) => r.row), failed };
+}
+const isNil = (v) => v === null || v === undefined;
+const isPending = (id) => typeof id === "string" && id.startsWith(NEW_INGREDIENT);
+// names of the not-created ingredients a product's recipes still point at
+const missingIngredients = (body, ctx) => [...new Set((body.options || []).flatMap((o) => (o.ingredients || [])
+  .filter((i) => isPending(i.ingredient_id)).map((i) => ctx.pendingIngredients[i.ingredient_id.slice(NEW_INGREDIENT.length)]?.name_en ?? i.ingredient_id)))];
+
 export async function referenceSheets(client, ctx) {
   const products = await client.products(ctx.marketId);
   return {
@@ -166,6 +217,18 @@ export async function upload(client, ctx, sheets, { mode = "upsert", dryRun = tr
   ctx.pendingOrderTypes = [];
   ctx.reindex();
 
+  // create the Ingredients sheet's new ingredients (live only) before the products whose recipes use them
+  let ingredientRows = [], ingFailed = {};
+  const newIngs = Object.values(ctx.pendingIngredients);
+  if (newIngs.length && !blocked) {
+    if (dryRun) {
+      newIngs.forEach((s) => log(L(`🆕 سيتم إنشاء المادة الخام: ${s.name_en} / ${s.name_ar} (${s.source_rate} ${s.source_unit} = ${s.target_rate} ${s.target_unit})`,
+        `🆕 Will create the ingredient: ${s.name_en} / ${s.name_ar} (${s.source_rate} ${s.source_unit} = ${s.target_rate} ${s.target_unit})`)));
+      ingredientRows = newIngs.map((s) => ({ name_en: s.name_en, name_ar: s.name_ar, storage_unit: s.source_unit, recipe_unit: s.target_unit,
+        storage_ratio: s.source_rate, recipe_ratio: s.target_rate, stock: s.stock, status: "DRY-RUN", flavours_id: null, message: "" }));
+    } else ({ rows: ingredientRows, failed: ingFailed } = await createIngredients(client, ctx, built, log));
+  }
+
   const existing = new Map();
   if (mode !== "always_create") {
     for (const p of await client.products(ctx.marketId)) {
@@ -186,7 +249,9 @@ export async function upload(client, ctx, sheets, { mode = "upsert", dryRun = tr
     const res = { product_code: bp.code, name_en: bp.name_en, action, status: "", flavours_id: match?.id ?? null,
       options: bp.body.options?.length ?? 0, message: "", payload: JSON.stringify(bp.body) };
     const pc = bp.body.category_id;
+    const missing = dryRun || blocked ? [] : missingIngredients(bp.body, ctx);
     if (blocked) res.status = "BLOCKED";
+    else if (missing.length) { res.status = "FAILED"; res.message = L(`فشل إنشاء المادة الخام: ${missing.join("، ")}`, `Could not create the ingredient: ${missing.join(", ")}`); }
     else if (!dryRun && isNew(pc)) { res.status = "FAILED"; res.message = L("فشل إنشاء التصنيف: ", "Could not create the category: ") + (catFailed[pc.__new_category__] || ""); }
     else if (dryRun || action === "skip") res.status = dryRun ? "DRY-RUN" : "SKIPPED";
     else {
@@ -202,12 +267,14 @@ export async function upload(client, ctx, sheets, { mode = "upsert", dryRun = tr
     results.push(res);
   }
   return {
-    results, issues,
+    results, issues, ingredients: ingredientRows,
     summary: {
       ready: built.length, errors: errors.length, warnings: issues.length - errors.length,
       ok: results.filter((r) => r.status === "OK").length,
       failed: results.filter((r) => r.status === "FAILED").length,
       skipped: results.filter((r) => r.status === "SKIPPED").length,
+      ingredientsCreated: ingredientRows.filter((r) => r.status === "OK").length,
+      ingredientsFailed: Object.keys(ingFailed).length,
       dryRun, blocked,
     },
   };

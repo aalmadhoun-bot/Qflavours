@@ -72,7 +72,7 @@ npx wrangler preview base-config secret put SESSION_SECRET
 | `js/builder.js` | قراءة القالب، التحقق من البيانات، وبناء طلبات المنتجات |
 | `js/api.js` | الاتصال بـ Q-Flavours API |
 | `js/uploader.js` | خطوات الرفع: التصنيفات ← التطبيقات (أنواع الطلب) ← المنتجات ← التقرير |
-| `js/template.js` | "قالب جاهز لحسابي": قالب الرفع بعمود لكل نوع طلب مسجّل بعد `price` في Products و Modifiers (سعر المنتج/الخيار في ذلك التطبيق)، ونفس الأنواع في Delivery_Prices و Price_Rules، + ورقة Order_Types |
+| `js/template.js` | "قالب جاهز لحسابي": قالب الرفع بعمود لكل نوع طلب مسجّل بعد `price` في Products و Modifiers (سعر المنتج/الخيار في ذلك التطبيق)، ونفس الأنواع في Delivery_Prices و Price_Rules، + ورقة Ingredients للمواد الخام الجديدة (تُنشأ قبل المنتجات) + ورقة Order_Types |
 | `js/excel.js` | قراءة ملف Excel وكتابة التقارير |
 | `templates/` | قوالب Excel |
 | `vendor/` | مكتبات SheetJS و ExcelJS (محلية، بدون CDN) |

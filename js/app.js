@@ -5,7 +5,7 @@ import { askConfirm, mountNav, track } from "./nav.js";
 import { accountTemplate } from "./template.js";
 import { L } from "./i18n.js";
 
-export const VERSION = "2.9.0";
+export const VERSION = "2.10.0";
 const $ = (id) => document.getElementById(id);
 // conn: "idle" | "connecting" | "ok" | "error" (with connError); summary: last run, so both re-render in the other language
 const state = { client: null, ctx: null, sheets: null, fileName: "", busy: false, report: null, step: 1,
@@ -114,9 +114,12 @@ function renderResult() {
   if (m.blocked) { msg = L("⛔ يوجد أخطاء في الملف — لم يُرفع أي منتج. راجع التقرير وصحّح الأخطاء.", "⛔ The file has errors — no product was uploaded. Check the report and fix the errors."); cls = "bad"; }
   else if (m.dryRun) { msg = L("🔍 فحص فقط — لم يُرفع شيء. راجع التقرير (ورقة Issues) ثم نفّذ الرفع الفعلي.", "🔍 Dry run — nothing was uploaded. Check the report (Issues sheet), then run the live upload."); cls = m.errors ? "bad" : "ok"; }
   else {
-    msg = m.failed ? L(`تم رفع ${m.ok} وفشل ${m.failed} — التفاصيل في التقرير.`, `${m.ok} uploaded, ${m.failed} failed — details in the report.`)
-      : L(`✅ تم رفع ${m.ok} منتج بنجاح.`, `✅ ${m.ok} products uploaded successfully.`);
-    cls = m.failed ? "bad" : "ok";
+    const ing = m.ingredientsCreated || m.ingredientsFailed
+      ? L(` المواد الخام: أُنشئ ${m.ingredientsCreated}${m.ingredientsFailed ? ` وفشل ${m.ingredientsFailed}` : ""}.`,
+        ` Ingredients: ${m.ingredientsCreated} created${m.ingredientsFailed ? `, ${m.ingredientsFailed} failed` : ""}.`) : "";
+    msg = (m.failed ? L(`تم رفع ${m.ok} وفشل ${m.failed} — التفاصيل في التقرير.`, `${m.ok} uploaded, ${m.failed} failed — details in the report.`)
+      : L(`✅ تم رفع ${m.ok} منتج بنجاح.`, `✅ ${m.ok} products uploaded successfully.`)) + ing;
+    cls = m.failed || m.ingredientsFailed ? "bad" : "ok";
   }
   setStatus($("resMsg"), msg, cls);
 }
@@ -189,6 +192,7 @@ async function run(live) {
     $("prog").classList.remove("hidden"); $("prog").value = 0; $("result").classList.add("hidden");
     state.ctx.createCategories = $("createCats").checked;
     state.ctx.createOrderTypes = $("createTypes").checked;
+    state.ctx.createIngredients = $("createIngs").checked;
     try {
       const out = await upload(state.client, state.ctx, structuredClone(state.sheets), {
         mode: document.querySelector("input[name=mode]:checked").value,
@@ -201,7 +205,7 @@ async function run(live) {
       state.summary = m;
       renderResult();
       track(live ? "upload" : "dry_run", { market: state.ctx.marketId, ready: m.ready, ok: m.ok, failed: m.failed, errors: m.errors, warnings: m.warnings });
-      state.report = { results: out.results, issues: out.issues };
+      state.report = { results: out.results, issues: out.issues, ingredients: out.ingredients };
       $("result").classList.remove("hidden");
     } catch (e) { log("❌ " + e.message); alert(e.message); }
     finally { $("prog").classList.add("hidden"); }
@@ -211,7 +215,8 @@ $("btnDry").onclick = () => run(false);
 $("btnLive").onclick = () => run(true);
 $("btnReport").onclick = async () => {
   if (!state.report) return;
-  download(await writeWorkbook({ Results: state.report.results, Issues: state.report.issues }), `flavours_report_${stamp()}.xlsx`);
+  const { results, issues, ingredients } = state.report;
+  download(await writeWorkbook({ Results: results, ...(ingredients?.length ? { Ingredients: ingredients } : {}), Issues: issues }), `flavours_report_${stamp()}.xlsx`);
   track("report", { market: state.ctx?.marketId });
 };
 
