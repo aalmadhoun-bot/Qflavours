@@ -357,9 +357,12 @@ export function buildPayloads(sheets, ctx) {
         }
         Object.assign(finals, explicit);
         // Flavours stores an app price as an amount ADDED to the base price and rejects a negative one (HTTP 422).
+        // User's decision: a lower app price doesn't hold the product back — it is skipped (that app keeps the base price).
         const what = m._default ? L("المنتج", "the product") : L(`الخيار '${m.modifier_name_en}'`, `option '${m.modifier_name_en}'`);
         for (const [key, v] of Object.entries(finals)) {
-          if (v < price) err(sheet, m._row, code, L(`سعر ${what} في ${key} (${v}) أقل من سعره الأساسي (${price}) — فليفرز لا يقبل سعر تطبيق أقل من السعر الأساسي. اكتب سعراً مساوياً أو أعلى، أو اترك الخانة فارغة`, `Price of ${what} in ${key} (${v}) is below its base price (${price}) — Flavours doesn't accept an app price below the base price. Enter an equal or higher price, or leave the cell empty`));
+          if (v >= price) continue;
+          delete finals[key];
+          warn(sheet, m._row, code, L(`سعر ${what} في ${key} (${v}) أقل من سعره الأساسي (${price}) — فليفرز لا يقبل سعر تطبيق أقل من الأساسي، فتم تجاوزه: يُرفع بسعره الأساسي في ${key}`, `Price of ${what} in ${key} (${v}) is below its base price (${price}) — Flavours doesn't accept a lower app price, so it was skipped: uploaded at its base price in ${key}`));
         }
       }
 
