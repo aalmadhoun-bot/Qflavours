@@ -61,7 +61,7 @@
   - `name_en, name_ar, description_en/ar, category_id, duration, market_id, branch_id, options[]` (نفس القائمة تُرسل أيضاً في `modifiers`).
   - option: `name_en, name_ar, type, pricing_type(=type), price, cost, calorie, is_tax_included(1/0), has_weight, weight_amount, weight_unit, has_stock, stock, barcode, ingredients[{ingredient_id, qty}], prices[]`.
   - `price` يجب أن يكون > 0 لـ OPTION/ADDITIONAL (الخادم يرفض 0). **قرار المستخدم: المنتج بدون سعر أو بسعر 0 = خطأ ولا يُرفع.**
-  - أسعار التطبيقات: `prices[] = {priceable_type:"ORDER_TYPE", priceable_id:<order type key>, value_type:"NOMINAL", value:<السعر النهائي − السعر الأساسي>}`؛ الفرق 0 لا يُرسل.
+  - أسعار التطبيقات: `prices[] = {priceable_type:"ORDER_TYPE", priceable_id:<order type key>, value_type:"NOMINAL", value:<السعر النهائي − السعر الأساسي>}`؛ الفرق 0 لا يُرسل. الفرق السالب يرفضه الخادم بـ 422، و**قرار المستخدم: سعر التطبيق الأقل من الأساسي لا يوقف المنتج** — يُحذف ذلك السعر فقط مع تحذير (يبقى السعر الأساسي في ذلك التطبيق).
 
 ## سلوك الأداة
 - التصنيف غير الموجود يُنشأ تلقائياً (قابل للإيقاف من الواجهة).
