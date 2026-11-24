@@ -74,7 +74,7 @@ npx wrangler preview base-config secret put SESSION_SECRET
 | `js/uploader.js` | خطوات الرفع: التصنيفات ← التطبيقات (أنواع الطلب) ← المنتجات ← التقرير |
 | `js/template.js` | "قالب جاهز لحسابي": قالب الرفع بعمود لكل نوع طلب مسجّل بعد `price` في Products و Modifiers (سعر المنتج/الخيار في ذلك التطبيق)، ونفس الأنواع في Delivery_Prices و Price_Rules، + ورقة Ingredients للمواد الخام الجديدة (تُنشأ قبل المنتجات) + ورقة Order_Types |
 | `js/excel.js` | قراءة ملف Excel وكتابة التقارير |
-| `templates/` | قوالب Excel |
+| `templates/` | قوالب Excel: مع أمثلة وفارغ (فيهما ورقة Ingredients للمواد الخام الجديدة) |
 | `vendor/` | مكتبات SheetJS و ExcelJS (محلية، بدون CDN) |
 
 ## ملاحظات تقنية

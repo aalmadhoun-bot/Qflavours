@@ -21,6 +21,7 @@ const EN_INSTRUCTIONS = [
   "4) Delivery_Prices: the final price of each option in each app/order type. The column header = the order type key or its name as in Flavours (see the Order_Types sheet in the reference data file). You can add columns.",
   "5) Price_Rules: instead of writing every price — a markup per app (e.g. HUNGERSTATION +20%). A price written explicitly in Delivery_Prices takes priority.",
   "6) Ingredients_Map: optional — maps an ingredient name to its ID if it isn't fetched automatically.",
+  "7) Ingredients: new ingredients (name, storage and recipe units, stock…) — created in Flavours before the products, so their names can be used directly in the Recipes sheet. Existing names are skipped.",
   "",
   "Notes:",
   "• Red columns are required. Don't rename the columns in the first row.",
@@ -74,8 +75,8 @@ const EN_NOTES = {
 };
 
 // Ingredients sheet (not in the stock template): new ingredients the upload creates before the products.
-const INGREDIENT_COLS = ["name_en", "name_ar", "storage_unit", "recipe_unit", "storage_ratio", "recipe_ratio", "stock", "cost", "minimum", "maximum"];
-const INGREDIENT_NOTES = {
+export const INGREDIENT_COLS = ["name_en", "name_ar", "storage_unit", "recipe_unit", "storage_ratio", "recipe_ratio", "stock", "cost", "minimum", "maximum"];
+export const INGREDIENT_NOTES = {
   name_en: ["اسم المادة الخام بالإنجليزي (إلزامي) — الاسم الموجود مسبقاً في فليفرز يُتخطى", "Ingredient name in English (required) — a name that already exists in Flavours is skipped"],
   name_ar: ["الاسم بالعربي — يمكن استخدامه في ورقة Recipes", "Name in Arabic — can be used in the Recipes sheet"],
   storage_unit: ["وحدة التخزين/الشراء (فارغ = kg)", "Storage/purchase unit (empty = kg)"],
@@ -121,6 +122,7 @@ export async function accountTemplate(ctx) {
   const wb = new globalThis.ExcelJS.Workbook();
 
   for (const name of src.SheetNames) {
+    if (name === "Ingredients") continue;  // written by addIngredientsSheet, after Recipes
     const ws = src.Sheets[name];
     const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
     if (name === INSTRUCTIONS) {
@@ -136,8 +138,6 @@ export async function accountTemplate(ctx) {
         "The same apps are the columns of the Delivery_Prices sheet (optional) and the Price_Rules keys; the full list is in the Order_Types sheet.")]);
       out.addRow([L("لإضافة تطبيق غير مسجّل أضف عموداً باسمه (مثل HUNGERSTATION)؛ ستفعّله الأداة أو تنشئه في حسابك عند الرفع الفعلي.",
         "To add an app that isn't registered, add a column with its name (e.g. HUNGERSTATION); the tool enables or creates it in your account on a live upload.")]);
-      out.addRow([L("مواد خام جديدة: اكتبها في ورقة Ingredients (الاسم، وحدة التخزين ووحدة الوصفة، المخزون…) — تُنشأ في فليفرز قبل المنتجات، ويمكن استخدام اسمها مباشرة في ورقة Recipes. الأسماء الموجودة مسبقاً تُتخطى.",
-        "New ingredients: list them in the Ingredients sheet (name, storage and recipe units, stock…) — they are created in Flavours before the products, and their names can be used directly in the Recipes sheet. Existing names are skipped.")]);
       out.getRow(1).font = { bold: true, size: 13 };
       continue;
     }
